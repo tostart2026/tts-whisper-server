@@ -222,10 +222,6 @@
     <div class="status" id="ttsStatus"></div>
     <audio id="ttsPlayer" controls class="hidden"></audio>
 
-    <details id="ttsModelsBox" class="hidden">
-      <summary>模型列表 (GET /tts/models)</summary>
-      <pre class="out" id="ttsModelsOut"></pre>
-    </details>
     <details id="ttsStreamBox" class="hidden">
       <summary>流式接收日志</summary>
       <pre class="out" id="ttsStreamOut"></pre>
@@ -291,6 +287,14 @@
 
     <div class="status" id="asrStatus"></div>
     <audio id="asrPlayer" controls class="hidden"></audio>
+  </div>
+
+  <!-- ================= 模型列表（与 TTS 面板同级，置于最后） ================= -->
+  <div class="panel hidden" id="ttsModelsPanel" style="margin-top:16px">
+    <details id="ttsModelsBox">
+      <summary>模型列表 (GET /tts/models)</summary>
+      <pre class="out" id="ttsModelsOut"></pre>
+    </details>
   </div>
 </div>
 
@@ -399,7 +403,8 @@
   }
 
   async function listModels() {
-    $('ttsModelsBox').classList.remove('hidden');
+    $('ttsModelsPanel').classList.remove('hidden');
+    $('ttsModelsBox').open = true;
     $('ttsModelsOut').textContent = '加载中...';
     try {
       const res = await fetch('/tts/models');
