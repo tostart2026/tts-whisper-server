@@ -19,7 +19,7 @@ export KOKORO_API_KEY="${KOKORO_API_KEY:-}"
 
 # Persistent model / huggingface cache directory (kept out of the source tree
 # so it is not lost on upgrades).
-KOKORO_DATA="${KOKORO_DATA:-$HERE/data}"
+KOKORO_DATA="${KOKORO_DATA:-$HERE/models}"
 mkdir -p "$KOKORO_DATA"
 export HF_HOME="${HF_HOME:-$KOKORO_DATA/hf}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-$HF_HOME/hub}"
