@@ -1,0 +1,13 @@
+models:
+  - name: medium
+    path: ./models/models/Systran--faster-whisper-medium/snapshots/master
+    model_options:
+      device: cuda
+      compute_type: int8_float16
+    batch_size: 1
+  - name: whisper-1
+    path: ./models/models/Systran--faster-whisper-medium/snapshots/master
+    model_options:
+      device: cuda
+      compute_type: int8
+    batch_size: 1

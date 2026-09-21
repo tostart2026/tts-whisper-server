@@ -1,0 +1,12 @@
+# Kokoro TTS server — direct (no Docker) runtime dependencies
+#
+# torch is intentionally NOT pinned here: the target conda env already ships a
+# CUDA-enabled torch build. Only install it explicitly if your env lacks it:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu   # CPU only
+kokoro==0.9.4
+misaki[ja]==0.9.4
+misaki[zh]==0.9.4
+soundfile==0.14.0
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+numpy==2.5.2

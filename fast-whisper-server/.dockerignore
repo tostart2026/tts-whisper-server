@@ -1,0 +1,16 @@
+.git/
+.gitignore
+models/
+*.log
+nohup.out
+*.wav
+*.deb
+test*.sh
+run.sh
+docker-compose.yml
+README.md
+requirements.txt
+config.yaml.bak
+__pycache__/
+*.pyc
+.dockerignore

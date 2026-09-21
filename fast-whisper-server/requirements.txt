@@ -1,0 +1,17 @@
+schedule
+jinja2~=3.1.4
+requests~=2.32.3
+pyinstaller
+numpy
+sanic
+torch
+zhconv
+uvicorn
+edge_tts
+soundfile
+Flask[async]
+pymongo
+uvicorn
+fastapi
+httpx
+faster-whisper-server

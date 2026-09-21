@@ -1,0 +1,23 @@
+Starting Kokoro TTS (direct run)
+  Env:   runtime
+  Voice: af_heart
+  Port:  8880
+  Cache: /data/tts-whisper-server/kokoro-tts/data/hf
+INFO:     Started server process [3201]
+INFO:     Waiting for application startup.
+/home/chenyh/.miniconda3/envs/runtime/lib/python3.12/site-packages/requests/__init__.py:92: RequestsDependencyWarning: Unable to find acceptable character detection dependency (chardet or charset_normalizer).
+  warnings.warn(
+2026-09-21 17:25:34,367 INFO kokoro_server: Loading Kokoro TTS pipeline | lang_code=a local_only=False
+2026-09-21 17:25:34,919 INFO httpx: HTTP Request: HEAD https://hf-mirror.com/hexgrad/Kokoro-82M/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-09-21 17:25:35,044 INFO httpx: HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/hexgrad/Kokoro-82M/f3ff3571791e39611d31c381e3a41a3af07b4987/config.json "HTTP/1.1 200 OK"
+/home/chenyh/.miniconda3/envs/runtime/lib/python3.12/site-packages/torch/nn/modules/rnn.py:1011: UserWarning: dropout option adds dropout after all but last recurrent layer, so non-zero dropout expects num_layers greater than 1, but got dropout=0.2 and num_layers=1
+  super().__init__("LSTM", *args, **kwargs)
+/home/chenyh/.miniconda3/envs/runtime/lib/python3.12/site-packages/torch/nn/utils/weight_norm.py:144: FutureWarning: `torch.nn.utils.weight_norm` is deprecated in favor of `torch.nn.utils.parametrizations.weight_norm`.
+  WeightNorm.apply(module, name, dim)
+2026-09-21 17:25:36,631 INFO httpx: HTTP Request: HEAD https://hf-mirror.com/hexgrad/Kokoro-82M/resolve/main/kokoro-v1_0.pth "HTTP/1.1 302 Found"
+2026-09-21 17:25:38,588 INFO kokoro_server: Pipeline lang_code='a' ready in 4.2s
+INFO:     Application startup complete.
+ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0', 8880): address already in use
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+WARNING: Defaulting repo_id to hexgrad/Kokoro-82M. Pass repo_id='hexgrad/Kokoro-82M' to suppress this warning.

@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TTS + Whisper 本地语音服务</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #1a1e26;
+    --border: #2c3340;
+    --text: #e6e9ef;
+    --muted: #8b95a7;
+    --accent: #4f8cff;
+    --accent-hover: #3d78e6;
+    --ok: #4ade80;
+    --err: #ff6b6b;
+    --warn: #fbbf24;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  .app { width: 100%; max-width: 820px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+
+  .topbar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--muted);
+  }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .pill.ok { color: var(--ok); border-color: rgba(74,222,128,.4); }
+  .pill.ok .dot { background: var(--ok); }
+  .pill.err { color: var(--err); border-color: rgba(255,107,107,.4); }
+  .pill.err .dot { background: var(--err); }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tab {
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .tab.active { background: var(--panel); color: var(--text); border-color: var(--accent); }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: grid;
+    gap: 16px;
+  }
+  .panel.hidden { display: none; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  input[type="text"], input[type="number"], textarea, select {
+    width: 100%;
+    background: #12151b;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 96px; line-height: 1.5; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; align-items: end; }
+  .slider-head { display: flex; justify-content: space-between; }
+  .slider-val { color: var(--accent); font-variant-numeric: tabular-nums; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  button.primary, button.ghost {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 14px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  button.primary { background: var(--accent); color: #fff; }
+  button.primary:hover { background: var(--accent-hover); }
+  button.primary:disabled, button.ghost:disabled { opacity: .5; cursor: not-allowed; }
+  button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  button.ghost:hover:not(:disabled) { background: #232936; }
+  .status { font-size: 13px; color: var(--muted); min-height: 18px; }
+  .status.error { color: var(--err); }
+  .status.ok { color: var(--ok); }
+  .status.warn { color: var(--warn); }
+  audio { width: 100%; margin-top: 8px; }
+  .hidden { display: none; }
+  .drop {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 22px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .drop.over { border-color: var(--accent); color: var(--text); }
+  pre.out {
+    margin: 0;
+    background: #12151b;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    overflow: auto;
+    max-height: 220px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .hint { font-size: 12px; color: var(--muted); }
+  details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>TTS + Whisper 本地语音服务</h1>
+  <div class="sub">Kokoro 语音合成 · faster-whisper 语音识别 · 由 nginx 统一代理</div>
+
+  <div class="topbar">
+    <span class="pill" id="pillHealth"><span class="dot"></span>服务健康 TTS / ASR</span>
+    <button class="ghost" id="refreshHealth" style="padding:6px 12px;font-size:12px">刷新状态</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="tts">语音合成 TTS</button>
+    <button class="tab" data-tab="asr">语音识别 Whisper</button>
+  </div>
+
+  <!-- ================= TTS ================= -->
+  <div class="panel" id="ttsPanel">
+    <div class="row-3">
+      <div>
+        <label for="ttsVoice">音色（支持 Kokoro 音色名 / OpenAI 别名）</label>
+        <select id="ttsVoice"></select>
+      </div>
+      <div>
+        <label for="ttsFormat">音频格式</label>
+        <select id="ttsFormat">
+          <option value="mp3">mp3</option>
+          <option value="wav">wav</option>
+          <option value="flac">flac</option>
+          <option value="opus">opus</option>
+          <option value="aac">aac</option>
+        </select>
+      </div>
+      <div>
+        <label for="ttsStream">输出方式</label>
+        <select id="ttsStream">
+          <option value="">普通（一次性返回）</option>
+          <option value="audio">流式音频 audio</option>
+          <option value="sse">流式 SSE</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="slider-head">
+          <label for="ttsSpeed">语速</label>
+          <span class="slider-val" id="ttsSpeedVal">1.0x</span>
+        </div>
+        <input type="range" id="ttsSpeed" min="0.5" max="2" step="0.1" value="1.0">
+      </div>
+      <div>
+        <div class="slider-head">
+          <label for="ttsVolume">音量倍数</label>
+          <span class="slider-val" id="ttsVolumeVal">1.0</span>
+        </div>
+        <input type="range" id="ttsVolume" min="0" max="2" step="0.1" value="1.0">
+      </div>
+    </div>
+
+    <div>
+      <label for="ttsText">合成文本</label>
+      <textarea id="ttsText">你好，这是一个本地部署的语音合成测试。</textarea>
+      <div class="hint" style="margin-top:6px">
+        示例：中文 zf_xiaobei / 英文 af_bella / OpenAI 别名 alloy
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="ttsSpeak">合成并播放</button>
+      <button class="ghost" id="ttsDownload" disabled>下载音频</button>
+      <button class="ghost" id="ttsReload">刷新音色</button>
+      <button class="ghost" id="ttsModels">列出模型</button>
+    </div>
+
+    <div class="status" id="ttsStatus"></div>
+    <audio id="ttsPlayer" controls class="hidden"></audio>
+
+    <details id="ttsModelsBox" class="hidden">
+      <summary>模型列表 (GET /tts/models)</summary>
+      <pre class="out" id="ttsModelsOut"></pre>
+    </details>
+    <details id="ttsStreamBox" class="hidden">
+      <summary>流式接收日志</summary>
+      <pre class="out" id="ttsStreamOut"></pre>
+      <div class="actions" style="margin-top:8px">
+        <button class="ghost" id="ttsStreamSave">下载流式原始输出</button>
+      </div>
+    </details>
+  </div>
+
+  <!-- ================= ASR ================= -->
+  <div class="panel hidden" id="asrPanel">
+    <div>
+      <label>音频文件（wav / mp3 / m4a 等）</label>
+      <div class="drop" id="asrDrop">点击选择文件，或将音频拖拽到此处</div>
+      <input type="file" id="asrFile" accept="audio/*" class="hidden">
+      <div class="status" id="asrFileInfo"></div>
+    </div>
+
+    <div class="row-3">
+      <div>
+        <label for="asrModel">模型 (model_name)</label>
+        <select id="asrModel">
+          <option value="whisper-1" selected>whisper-1</option>
+        </select>
+      </div>
+      <div>
+        <label for="asrLang">语言</label>
+        <select id="asrLang"><option value="">自动检测</option></select>
+      </div>
+      <div>
+        <label for="asrFormat">输出格式</label>
+        <select id="asrFormat">
+          <option value="json">json</option>
+          <option value="verbose_json">verbose_json</option>
+        </select>
+      </div>
+    </div>
+
+    <details>
+      <summary>高级参数</summary>
+      <div class="row-4" style="margin-top:10px">
+        <div>
+          <label for="asrTemp">temperature</label>
+          <input type="text" id="asrTemp" value="0.0">
+        </div>
+        <div>
+          <label for="asrPrompt">prompt（术语提示）</label>
+          <input type="text" id="asrPrompt" placeholder="可选">
+        </div>
+      </div>
+    </details>
+
+    <div class="actions">
+      <button class="primary" id="asrRun">开始转写</button>
+      <button class="ghost" id="asrTranslate">翻译为英文</button>
+      <button class="ghost" id="asrClear">清空</button>
+    </div>
+
+    <div>
+      <label for="asrResult">识别结果</label>
+      <textarea id="asrResult" placeholder="识别结果将显示在这里" style="min-height:160px"></textarea>
+    </div>
+
+    <div class="status" id="asrStatus"></div>
+    <audio id="asrPlayer" controls class="hidden"></audio>
+  </div>
+</div>
+
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+
+  /* ---------- 99 种语言（来自 fast-whisper-server/test2.sh） ---------- */
+  const LANGUAGES = [
+    ['zh','中文'],['en','英语'],['ja','日语'],['ko','韩语'],['fr','法语'],['de','德语'],
+    ['es','西班牙语'],['ru','俄语'],['ar','阿拉伯语'],['pt','葡萄牙语'],['it','意大利语'],
+    ['vi','越南语'],['th','泰语'],['pl','波兰语'],['nl','荷兰语'],['id','印尼语'],['ms','马来语'],
+    ['sv','瑞典语'],['fi','芬兰语'],['da','丹麦语'],['no','挪威语'],['cs','捷克语'],
+    ['hu','匈牙利语'],['ro','罗马尼亚语'],['uk','乌克兰语'],['el','希腊语'],['hi','印地语'],
+    ['bn','孟加拉语'],['ta','泰米尔语'],['te','泰卢固语'],['mr','马拉地语'],['ml','马拉雅拉姆语'],
+    ['ca','加泰罗尼亚语'],['lv','拉脱维亚语'],['sa','梵语'],['si','僧伽罗语'],['am','阿姆哈拉语'],
+    ['ug','乌古里语'],['ur','乌尔都语'],['eu','巴斯克语'],['ku','库尔德语'],['lo','老挝语'],
+    ['kw','科尼什语'],['hy','亚美尼亚语'],['ne','尼泊尔语'],['mn','蒙古语'],['bs','波斯尼亚语'],
+    ['kk','哈萨克语'],['sq','阿尔巴尼亚语'],['sw','斯瓦希里语'],['gl','加利西亚语'],['pa','旁遮普语'],
+    ['km','高棉语'],['sn','肖纳语'],['yo','约鲁巴语'],['so','索马里语'],['af','阿弗里卡语'],
+    ['oc','奥克语'],['ka','格鲁吉亚语'],['be','白俄罗斯语'],['tg','塔吉克语'],['sd','信德语'],
+    ['gu','古吉拉特语'],['yi','意第绪语'],['tt','塔塔尔语'],['haw','夏威夷语'],['ln','林加拉语'],
+    ['ha','豪萨语'],['ba','巴什基尔语'],['jw','爪哇语'],['su','巽他语'],['yue','粤语'],
+    ['hr','克罗地亚语'],['bg','保加利亚语'],['lt','立陶宛语'],['la','拉丁语'],['mi','毛利语'],
+    ['cy','威尔士语'],['sk','斯洛伐克语'],['fa','波斯语'],['uz','乌兹别克语'],['fo','法罗语'],
+    ['ht','海地克里奥尔语'],['ps','Pashto'],['tk','土库曼语'],['nn','挪威尼诺斯克语'],['mt','马尔代夫语'],
+    ['my','缅甸语'],['bo','藏语'],['tl','宿务语'],['mg','马达加斯加语'],['as','阿萨姆语']
+  ];
+  LANGUAGES.forEach(([code, name]) => {
+    const opt = document.createElement('option');
+    opt.value = code;
+    opt.textContent = code + ' — ' + name;
+    $('asrLang').appendChild(opt);
+  });
+
+  /* ---------- tabs ---------- */
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const isTts = tab.dataset.tab === 'tts';
+      $('ttsPanel').classList.toggle('hidden', !isTts);
+      $('asrPanel').classList.toggle('hidden', isTts);
+    });
+  });
+
+  /* ---------- 健康检查（test.sh 第 1 项） ---------- */
+  async function setPill(id, name, url) {
+    const el = $(id);
+    el.className = 'pill';
+    el.innerHTML = '<span class="dot"></span>' + name + ' · 检测中';
+    try {
+      const res = await fetch(url);
+      const text = await res.text();
+      if (res.ok) {
+        el.className = 'pill ok';
+        el.innerHTML = '<span class="dot"></span>' + name + ' · 正常';
+      } else {
+        throw new Error('HTTP ' + res.status);
+      }
+    } catch (e) {
+      el.className = 'pill err';
+      el.innerHTML = '<span class="dot"></span>' + name + ' · 异常';
+    }
+  }
+  function refreshHealth() {
+    setPill('pillHealth', '服务健康 TTS / ASR', '/health');
+  }
+  $('refreshHealth').addEventListener('click', refreshHealth);
+
+  /* ================= TTS ================= */
+  let lastTtsUrl = null;
+  let lastTtsBlob = null;
+  let lastStreamText = '';
+
+  function ttsStatus(msg, type) {
+    const el = $('ttsStatus');
+    el.textContent = msg || '';
+    el.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  async function loadVoices() {
+    ttsStatus('正在加载音色...');
+    try {
+      const res = await fetch('/tts/voices');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const voices = Array.isArray(data) ? data : (data.voices || []);
+      if (!voices.length) throw new Error('音色列表为空');
+      const sel = $('ttsVoice');
+      sel.innerHTML = '';
+      voices.forEach(v => {
+        const name = typeof v === 'string' ? v : (v.id || v.name || String(v));
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = (typeof v === 'object' && v.description) ? (name + ' — ' + v.description) : name;
+        sel.appendChild(opt);
+      });
+      const list = voices.map(x => typeof x === 'string' ? x : (x.id || x.name));
+      const match = ['zf_xiaobei', 'af_bella', 'af_heart'].find(p => list.includes(p));
+      if (match) sel.value = match;
+      ttsStatus('已加载 ' + voices.length + ' 个音色', 'ok');
+    } catch (e) {
+      ttsStatus('加载音色失败: ' + e.message, 'error');
+    }
+  }
+
+  async function listModels() {
+    $('ttsModelsBox').classList.remove('hidden');
+    $('ttsModelsOut').textContent = '加载中...';
+    try {
+      const res = await fetch('/tts/models');
+      const data = await res.json();
+      $('ttsModelsOut').textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      $('ttsModelsOut').textContent = '获取失败: ' + e.message;
+    }
+  }
+
+  function ttsPayload(extra) {
+    return Object.assign({
+      model: 'kokoro',
+      input: $('ttsText').value.trim(),
+      voice: $('ttsVoice').value,
+      response_format: $('ttsFormat').value,
+      speed: parseFloat($('ttsSpeed').value),
+      volume_multiplier: parseFloat($('ttsVolume').value),
+    }, extra || {});
+  }
+
+  function playBlob(blob) {
+    lastTtsBlob = blob;
+    if (lastTtsUrl) URL.revokeObjectURL(lastTtsUrl);
+    lastTtsUrl = URL.createObjectURL(blob);
+    $('ttsPlayer').src = lastTtsUrl;
+    $('ttsPlayer').classList.remove('hidden');
+    $('ttsDownload').disabled = false;
+    $('ttsPlayer').play().catch(() => {});
+  }
+
+  function appendStreamLog(line) {
+    $('ttsStreamBox').classList.remove('hidden');
+    lastStreamText += line + '\n';
+    const out = $('ttsStreamOut');
+    out.textContent += line + '\n';
+    out.scrollTop = out.scrollHeight;
+  }
+
+  async function synthesize() {
+    const text = $('ttsText').value.trim();
+    if (!text) { ttsStatus('请输入要合成的文本', 'error'); return; }
+    if (!$('ttsVoice').value) { ttsStatus('请选择音色', 'error'); return; }
+
+    const stream = $('ttsStream').value;
+    $('ttsSpeak').disabled = true;
+
+    try {
+      if (stream === 'sse') {
+        await synthesizeSse();
+        return;
+      }
+
+      ttsStatus(stream === 'audio' ? '流式合成中...' : '合成中...');
+      const res = await fetch('/tts/audio/speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ttsPayload(stream ? { stream_format: stream } : {})),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error('HTTP ' + res.status + ' ' + detail);
+      }
+
+      let blob;
+      if (stream === 'audio' && res.body) {
+        lastStreamText = '';
+        $('ttsStreamOut').textContent = '';
+        const reader = res.body.getReader();
+        const chunks = [];
+        let received = 0;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          received += value.length;
+          ttsStatus('流式接收中... ' + (received / 1024).toFixed(1) + ' KB');
+        }
+        blob = new Blob(chunks, { type: 'audio/mpeg' });
+        appendStreamLog('stream_format=audio，共接收 ' + (received / 1024).toFixed(1) + ' KB');
+      } else {
+        blob = await res.blob();
+      }
+
+      playBlob(blob);
+      ttsStatus('合成成功 (' + (blob.size / 1024).toFixed(1) + ' KB)', 'ok');
+    } catch (e) {
+      ttsStatus('合成失败: ' + e.message, 'error');
+    } finally {
+      $('ttsSpeak').disabled = false;
+    }
+  }
+
+  async function synthesizeSse() {
+    ttsStatus('SSE 流式合成中...');
+    lastStreamText = '';
+    $('ttsStreamOut').textContent = '';
+    $('ttsStreamBox').classList.remove('hidden');
+    const res = await fetch('/tts/audio/speech', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ttsPayload({ stream_format: 'sse' })),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      throw new Error('HTTP ' + res.status + ' ' + detail);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '', events = 0, bytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.length;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+      parts.forEach(evt => {
+        if (!evt.trim()) return;
+        events++;
+        const dataLines = evt.split('\n').filter(l => l.startsWith('data:')).map(l => l.slice(5).trim());
+        appendStreamLog('event #' + events + '  ' + (dataLines.join(' ').slice(0, 120) || evt.slice(0, 120)));
+      });
+      ttsStatus('SSE 接收中... 事件 ' + events + '，' + (bytes / 1024).toFixed(1) + ' KB');
+    }
+    if (buffer.trim()) appendStreamLog(buffer.trim().slice(0, 300));
+    ttsStatus('SSE 完成，共 ' + events + ' 个事件 (' + (bytes / 1024).toFixed(1) + ' KB)', 'ok');
+  }
+
+  $('ttsSpeed').addEventListener('input', () => {
+    $('ttsSpeedVal').textContent = parseFloat($('ttsSpeed').value).toFixed(1) + 'x';
+  });
+  $('ttsVolume').addEventListener('input', () => {
+    $('ttsVolumeVal').textContent = parseFloat($('ttsVolume').value).toFixed(1);
+  });
+  $('ttsSpeak').addEventListener('click', synthesize);
+  $('ttsReload').addEventListener('click', loadVoices);
+  $('ttsModels').addEventListener('click', listModels);
+  $('ttsDownload').addEventListener('click', () => {
+    if (!lastTtsBlob) return;
+    const a = document.createElement('a');
+    a.href = lastTtsUrl;
+    a.download = 'speech.' + $('ttsFormat').value;
+    a.click();
+  });
+  $('ttsStreamSave').addEventListener('click', () => {
+    const blob = new Blob([lastStreamText], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'stream_output.txt';
+    a.click();
+  });
+
+  /* ================= ASR ================= */
+  let asrFile = null;
+
+  function asrStatus(msg, type) {
+    const el = $('asrStatus');
+    el.textContent = msg || '';
+    el.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  function setAsrFile(file) {
+    asrFile = file || null;
+    if (!file) {
+      $('asrFileInfo').textContent = '';
+      $('asrFileInfo').className = 'status';
+      $('asrPlayer').classList.add('hidden');
+      return;
+    }
+    $('asrFileInfo').textContent = '已选择: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+    $('asrFileInfo').className = 'status ok';
+    $('asrPlayer').src = URL.createObjectURL(file);
+    $('asrPlayer').classList.remove('hidden');
+  }
+
+  const drop = $('asrDrop');
+  drop.addEventListener('click', () => $('asrFile').click());
+  $('asrFile').addEventListener('change', e => setAsrFile(e.target.files[0]));
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.add('over');
+  }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.remove('over');
+  }));
+  drop.addEventListener('drop', e => {
+    if (e.dataTransfer.files.length) setAsrFile(e.dataTransfer.files[0]);
+  });
+
+  async function transcribe(endpoint, label) {
+    if (!asrFile) { asrStatus('请先选择音频文件', 'error'); return; }
+    const fd = new FormData();
+    fd.append('file', asrFile);
+    fd.append('model_name', $('asrModel').value);
+    fd.append('response_format', $('asrFormat').value);
+    fd.append('temperature', $('asrTemp').value || '0.0');
+    const lang = $('asrLang').value;
+    if (lang) fd.append('language', lang);
+    const prompt = $('asrPrompt').value.trim();
+    if (prompt) fd.append('prompt', prompt);
+
+    $('asrRun').disabled = true;
+    $('asrTranslate').disabled = true;
+    asrStatus(label + '中...');
+    try {
+      const res = await fetch(endpoint, { method: 'POST', body: fd });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error('HTTP ' + res.status + ' ' + detail);
+      }
+      const data = await res.json();
+      if (data.text !== undefined) {
+        let out = data.text;
+        if (data.language) out += '\n\n[语言: ' + data.language + (data.duration ? ' / 时长: ' + data.duration + 's' : '') + ']';
+        $('asrResult').value = out;
+      } else {
+        $('asrResult').value = JSON.stringify(data, null, 2);
+      }
+      asrStatus(label + '完成', 'ok');
+    } catch (e) {
+      asrStatus(label + '失败: ' + e.message, 'error');
+    } finally {
+      $('asrRun').disabled = false;
+      $('asrTranslate').disabled = false;
+    }
+  }
+
+  $('asrRun').addEventListener('click', () => transcribe('/asr/audio/transcriptions', '转写'));
+  $('asrTranslate').addEventListener('click', () => transcribe('/asr/audio/translations', '翻译'));
+  $('asrClear').addEventListener('click', () => {
+    $('asrResult').value = '';
+    setAsrFile(null);
+    $('asrFile').value = '';
+    asrStatus('');
+  });
+
+  loadVoices();
+  refreshHealth();
+})();
+</script>
+</body>
+</html>
