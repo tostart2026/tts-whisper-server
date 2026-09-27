@@ -37,4 +37,4 @@ source "$CONDA_SH"
 conda activate "$ENV_NAME"
 
 cd "$HERE"
-exec python "$HERE/api_server.py"
+nohup python "$HERE/api_server.py" &
