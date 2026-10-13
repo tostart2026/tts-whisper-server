@@ -13,7 +13,7 @@ CONDA_SH="${CONDA_SH:-$HOME/.miniconda3/etc/profile.d/conda.sh}"
 # Active voice / synthesis defaults (see api_server.py for all KOKORO_* vars).
 export KOKORO_VOICE="${KOKORO_VOICE:-af_heart}"
 export KOKORO_SPEED="${KOKORO_SPEED:-1.0}"
-export KOKORO_PORT="${KOKORO_PORT:-8880}"
+export KOKORO_PORT="${KOKORO_PORT:-8082}"
 export KOKORO_LOG_LEVEL="${KOKORO_LOG_LEVEL:-INFO}"
 export KOKORO_API_KEY="${KOKORO_API_KEY:-}"
 

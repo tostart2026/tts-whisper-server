@@ -831,7 +831,7 @@ async def create_speech(
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    port = int(os.environ.get("KOKORO_PORT", "8880"))
+    port = int(os.environ.get("KOKORO_PORT", "8082"))
     uvicorn.run(
         "api_server:app",
         host="0.0.0.0",

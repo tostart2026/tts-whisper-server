@@ -158,6 +158,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="tts">语音合成 TTS</button>
     <button class="tab" data-tab="asr">语音识别 Whisper</button>
+    <button class="tab" data-tab="gptsovits">数字人声音合成</button>
   </div>
 
   <!-- ================= TTS ================= -->
@@ -289,6 +290,58 @@
     <audio id="asrPlayer" controls class="hidden"></audio>
   </div>
 
+  <!-- ================= 数字人声音合成 ================= -->
+  <div class="panel hidden" id="gptsovitsPanel">
+    <div>
+      <label for="gsToken">token（声音令牌，master / assit 共用）</label>
+      <input type="text" id="gsToken" placeholder="声音令牌">
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="gsMasterText">master 合成文本 voiceText</label>
+        <textarea id="gsMasterText">你好，这是 master 数字人声音合成测试。</textarea>
+        <div class="actions" style="margin-top:10px">
+          <button class="primary" id="gsMasterSpeak">master 声音合成</button>
+          <button class="ghost" id="gsMasterPlay" disabled>播放</button>
+          <button class="ghost" id="gsMasterDownload" disabled>下载音频</button>
+        </div>
+        <audio id="gsMasterPlayer" controls class="hidden"></audio>
+      </div>
+
+      <div>
+        <label for="gsAssitText">assit 合成文本 voiceText</label>
+        <textarea id="gsAssitText">你好，这是 assit 数字人声音合成测试。</textarea>
+        <div class="actions" style="margin-top:10px">
+          <button class="primary" id="gsAssitSpeak">assit 声音合成</button>
+          <button class="ghost" id="gsAssitPlay" disabled>播放</button>
+          <button class="ghost" id="gsAssitDownload" disabled>下载音频</button>
+        </div>
+        <audio id="gsAssitPlayer" controls class="hidden"></audio>
+      </div>
+    </div>
+
+    <div class="status" id="gsStatus"></div>
+
+    <details id="gsMetaBox" class="hidden">
+      <summary>服务端调用详情（声音调用地址 / 请求参数 / 调用结果）</summary>
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label>声音调用地址</label>
+          <pre class="out" id="gsMetaUpstream">-</pre>
+        </div>
+        <div>
+          <label>调用结果</label>
+          <pre class="out" id="gsMetaResult">-</pre>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <label>请求参数</label>
+        <pre class="out" id="gsMetaBody">-</pre>
+      </div>
+    </details>
+  </div>
+
   <!-- ================= 模型列表（与 TTS 面板同级，置于最后） ================= -->
   <div class="panel hidden" id="ttsModelsPanel" style="margin-top:16px">
     <details id="ttsModelsBox">
@@ -335,9 +388,10 @@
     tab.addEventListener('click', () => {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      const isTts = tab.dataset.tab === 'tts';
-      $('ttsPanel').classList.toggle('hidden', !isTts);
-      $('asrPanel').classList.toggle('hidden', isTts);
+      const target = tab.dataset.tab;
+      [['tts', 'ttsPanel'], ['asr', 'asrPanel'], ['gptsovits', 'gptsovitsPanel']].forEach(([key, id]) => {
+        $(id).classList.toggle('hidden', key !== target);
+      });
     });
   });
 
@@ -640,6 +694,113 @@
     $('asrFile').value = '';
     asrStatus('');
   });
+
+  /* ================= 数字人声音合成 ================= */
+  const GS_ROLES = {
+    master: { speak: 'gsMasterSpeak', play: 'gsMasterPlay', download: 'gsMasterDownload', player: 'gsMasterPlayer', text: 'gsMasterText' },
+    assit: { speak: 'gsAssitSpeak', play: 'gsAssitPlay', download: 'gsAssitDownload', player: 'gsAssitPlayer', text: 'gsAssitText' },
+  };
+  const gsState = {
+    master: { blob: null, url: null },
+    assit: { blob: null, url: null },
+  };
+
+  function gsStatus(msg, type) {
+    const el = $('gsStatus');
+    el.textContent = msg || '';
+    el.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  function b64ToUtf8(b64) {
+    const bin = atob(b64);
+    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  function gsShowMeta(url, params, result) {
+    $('gsMetaBox').classList.remove('hidden');
+    $('gsMetaUpstream').textContent = url || '-';
+    $('gsMetaBody').textContent = params || '-';
+    $('gsMetaResult').textContent = result || '-';
+  }
+
+  function gsReadMeta(res) {
+    const url = res.headers.get('X-DIGITALMAN-Url') || '';
+    const status = res.headers.get('X-DIGITALMAN-Status') || '';
+    const rawParams = res.headers.get('X-DIGITALMAN-Params') || '';
+    let params = '';
+    if (rawParams) {
+      try { params = JSON.stringify(JSON.parse(b64ToUtf8(rawParams)), null, 2); }
+      catch (e) { params = rawParams; }
+    }
+    return { url: url, status: status, params: params };
+  }
+
+  async function gsSynthesize(role) {
+    const token = $('gsToken').value.trim();
+    const cfg = GS_ROLES[role];
+    const voiceText = $(cfg.text).value.trim();
+    if (!token) { gsStatus('请输入 token', 'error'); return; }
+    if (!voiceText) { gsStatus('请输入 ' + role + ' voiceText', 'error'); return; }
+
+    $(cfg.speak).disabled = true;
+    gsStatus(role + ' 合成中...');
+    try {
+      const res = await fetch('/gptsovit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token, voiceText: voiceText, role: role }),
+      });
+      const meta = gsReadMeta(res);
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        gsShowMeta(meta.url, meta.params, 'HTTP ' + res.status + (meta.status ? ' / 上游 ' + meta.status : '') + '\n' + detail);
+        throw new Error('HTTP ' + res.status + ' ' + detail);
+      }
+      const blob = await res.blob();
+      const st = gsState[role];
+      st.blob = blob;
+      if (st.url) URL.revokeObjectURL(st.url);
+      st.url = URL.createObjectURL(blob);
+
+      const player = $(cfg.player);
+      player.src = st.url;
+      player.classList.remove('hidden');
+      $(cfg.play).disabled = false;
+      $(cfg.download).disabled = false;
+      player.play().catch(() => {});
+
+      gsShowMeta(meta.url, meta.params,
+        role + ' · HTTP ' + res.status + (meta.status ? ' / 上游 ' + meta.status : '') +
+        '\n音频大小: ' + (blob.size / 1024).toFixed(1) + ' KB');
+      gsStatus(role + ' 合成成功 (' + (blob.size / 1024).toFixed(1) + ' KB)', 'ok');
+    } catch (e) {
+      gsStatus(role + ' 合成失败: ' + e.message, 'error');
+    } finally {
+      $(cfg.speak).disabled = false;
+    }
+  }
+
+  function gsPlay(role) {
+    const player = $(GS_ROLES[role].player);
+    if (player.src) player.play().catch(() => {});
+  }
+
+  function gsDownload(role) {
+    const st = gsState[role];
+    if (!st.blob) return;
+    const a = document.createElement('a');
+    a.href = st.url;
+    a.download = 'digitalman-' + role + '.wav';
+    a.click();
+  }
+
+  $('gsMasterSpeak').addEventListener('click', () => gsSynthesize('master'));
+  $('gsAssitSpeak').addEventListener('click', () => gsSynthesize('assit'));
+  $('gsMasterPlay').addEventListener('click', () => gsPlay('master'));
+  $('gsAssitPlay').addEventListener('click', () => gsPlay('assit'));
+  $('gsMasterDownload').addEventListener('click', () => gsDownload('master'));
+  $('gsAssitDownload').addEventListener('click', () => gsDownload('assit'));
 
   loadVoices();
   refreshHealth();

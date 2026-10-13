@@ -16,7 +16,7 @@ case "$1" in
       faster-whisper-server \
       --config ./config.yaml \
       --host 0.0.0.0 \
-      --port 8000 \
+      --port 8081 \
       --workers 1 \
       --log-level info \
       >> whisper.log 2>&1 &

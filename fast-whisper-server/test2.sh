@@ -110,7 +110,7 @@ LANG_NAMES[as]="阿萨姆语"
 CODES=($ALL_LANGUAGES)
 
 if echo "$ALL_LANGUAGES" | grep -qw "$LANG"; then
-  curl -X POST "http://localhost:8000/v1/audio/transcriptions" \
+  curl -X POST "http://localhost:8081/v1/audio/transcriptions" \
     -F "file=@./关税.wav" \
     -F "model_name=whisper-1" \
     -F "language=$LANG" \

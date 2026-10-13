@@ -9,10 +9,10 @@
 ./run.sh start
 
 # 或直接启动
-faster-whisper-server --config ./config.yaml --host 0.0.0.0 --port 8000 --workers 4
+faster-whisper-server --config ./config.yaml --host 0.0.0.0 --port 8081 --workers 4
 ```
 
-服务默认运行在 `http://localhost:8000`
+服务默认运行在 `http://localhost:8081`
 
 ---
 
@@ -23,7 +23,7 @@ faster-whisper-server --config ./config.yaml --host 0.0.0.0 --port 8000 --worker
 **GET** `/health`
 
 ```bash
-curl "http://localhost:8000/health"
+curl "http://localhost:8081/health"
 ```
 
 **响应:**
@@ -52,7 +52,7 @@ curl "http://localhost:8000/health"
 
 **示例 - 简单转写:**
 ```bash
-curl -X POST "http://localhost:8000/v1/audio/transcriptions" \
+curl -X POST "http://localhost:8081/v1/audio/transcriptions" \
   -F "file=@./关税.wav" \
   -F "model_name=whisper-1" \
   -F "response_format=json"
@@ -65,7 +65,7 @@ curl -X POST "http://localhost:8000/v1/audio/transcriptions" \
 
 **示例 - 详细输出 (含时间戳、置信度等):**
 ```bash
-curl -X POST "http://localhost:8000/v1/audio/transcriptions" \
+curl -X POST "http://localhost:8081/v1/audio/transcriptions" \
   -F "file=@./关税.wav" \
   -F "model_name=whisper-1" \
   -F "language=zh" \
@@ -116,7 +116,7 @@ curl -X POST "http://localhost:8000/v1/audio/transcriptions" \
 
 **示例:**
 ```bash
-curl -X POST "http://localhost:8000/v1/audio/translations" \
+curl -X POST "http://localhost:8081/v1/audio/translations" \
   -F "file=@./关税.wav" \
   -F "model_name=whisper-1" \
   -F "response_format=json"
@@ -129,7 +129,7 @@ curl -X POST "http://localhost:8000/v1/audio/translations" \
 
 **示例 - 详细输出:**
 ```bash
-curl -X POST "http://localhost:8000/v1/audio/translations" \
+curl -X POST "http://localhost:8081/v1/audio/translations" \
   -F "file=@./关税.wav" \
   -F "model_name=whisper-1" \
   -F "response_format=verbose_json"
@@ -162,7 +162,7 @@ import requests
 # 转写
 with open("audio.wav", "rb") as f:
     resp = requests.post(
-        "http://localhost:8000/v1/audio/transcriptions",
+        "http://localhost:8081/v1/audio/transcriptions",
         files={"file": f},
         data={"model_name": "whisper-1", "language": "zh", "response_format": "verbose_json"}
     )
@@ -171,7 +171,7 @@ with open("audio.wav", "rb") as f:
 # 翻译
 with open("audio.wav", "rb") as f:
     resp = requests.post(
-        "http://localhost:8000/v1/audio/translations",
+        "http://localhost:8081/v1/audio/translations",
         files={"file": f},
         data={"model_name": "whisper-1", "response_format": "json"}
     )
