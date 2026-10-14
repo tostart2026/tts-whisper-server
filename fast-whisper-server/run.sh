@@ -1,6 +1,6 @@
 #!/bin/bash
 source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate runtime
+conda activate tts-whisper
 
 cd "$(dirname "$0")"
 

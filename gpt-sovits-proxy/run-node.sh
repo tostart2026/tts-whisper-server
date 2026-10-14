@@ -17,13 +17,13 @@ set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-export MONGODB_URI="${MONGODB_URI:-mongodb://192.168.168.60:27017,192.168.168.60:27018,192.168.168.60:27019/?replicaSet=rs0}"
+export MONGODB_URI="${MONGODB_URI:-mongodb://192.168.168.33:27017,192.168.168.33:27018,192.168.168.33:27019/?replicaSet=rs0}"
 export MONGODB_DB="${MONGODB_DB:-voice_helper_db}"
 export DIGITALMAN_DB="${DIGITALMAN_DB:-digitalman_db}"
-export REDIS_URL="${REDIS_URL:-redis://192.168.168.60:6379}"
+export REDIS_URL="${REDIS_URL:-redis://192.168.168.33:6379}"
 export VOICE_SCHEME="${VOICE_SCHEME:-http}"
-export VOICE_HOST="${VOICE_HOST:-192.168.168.60}"
-export VOICE_PORT="${VOICE_PORT:-60002}"
+export VOICE_HOST="${VOICE_HOST:-192.168.168.33}"
+export VOICE_PORT="${VOICE_PORT:-33002}"
 export VOICE_TTS_PATH="${VOICE_TTS_PATH:-/tts}"
 export TRUST_PROXY="${TRUST_PROXY:-true}"
 export DIGITALMAN_PROXY_HOST="${DIGITALMAN_PROXY_HOST:-0.0.0.0}"
@@ -89,24 +89,46 @@ run_supervisor() {
 # Entry point.
 # ---------------------------------------------------------------------------
 stop_all() {
+    local spid="" wpid="" stopped=0
     if [[ -f "$SUPERVISOR_PID_FILE" ]]; then
-        local spid
         spid="$(cat "$SUPERVISOR_PID_FILE" 2>/dev/null || true)"
         if [[ -n "$spid" ]] && kill -0 "$spid" 2>/dev/null; then
             log "Stopping supervisor (pid=$spid)"
             kill "$spid" 2>/dev/null || true
+            stopped=1
         fi
     fi
     if [[ -f "$WORKER_PID_FILE" ]]; then
-        local wpid
         wpid="$(cat "$WORKER_PID_FILE" 2>/dev/null || true)"
         if [[ -n "$wpid" ]] && kill -0 "$wpid" 2>/dev/null; then
             log "Stopping worker (pid=$wpid)"
             kill "$wpid" 2>/dev/null || true
+            stopped=1
         fi
     fi
+
+    # Give processes up to ~3s to exit gracefully, then force kill.
+    local i
+    for i in $(seq 1 10); do
+        if { [[ -n "$spid" ]] && kill -0 "$spid" 2>/dev/null; } || \
+           { [[ -n "$wpid" ]] && kill -0 "$wpid" 2>/dev/null; }; then
+            sleep 0.3
+        else
+            break
+        fi
+    done
+    if [[ -n "$spid" ]] && kill -0 "$spid" 2>/dev/null; then
+        log "Supervisor (pid=$spid) did not exit, sending SIGKILL"
+        kill -9 "$spid" 2>/dev/null || true
+    fi
+    if [[ -n "$wpid" ]] && kill -0 "$wpid" 2>/dev/null; then
+        log "Worker (pid=$wpid) did not exit, sending SIGKILL"
+        kill -9 "$wpid" 2>/dev/null || true
+    fi
     rm -f "$SUPERVISOR_PID_FILE" "$WORKER_PID_FILE"
-    log "Stopped."
+    if [[ "$stopped" == "1" ]]; then
+        log "Previous instance stopped."
+    fi
 }
 
 if [[ "${RUN_NODE_WORKER:-}" == "1" ]]; then
@@ -130,13 +152,8 @@ case "${1:-}" in
         exit 0
         ;;
     *)
-        if [[ -f "$SUPERVISOR_PID_FILE" ]]; then
-            existing="$(cat "$SUPERVISOR_PID_FILE" 2>/dev/null || true)"
-            if [[ -n "$existing" ]] && kill -0 "$existing" 2>/dev/null; then
-                log "Supervisor already running (pid=$existing); nothing to do."
-                exit 0
-            fi
-        fi
+        stop_all
+        sleep 1
         nohup env RUN_NODE_SUPERVISOR=1 "${BASH_SOURCE[0]}" >>"$LOG_FILE" 2>&1 &
         SUPERVISOR_PID=$!
         echo "$SUPERVISOR_PID" >"$SUPERVISOR_PID_FILE"

@@ -321,12 +321,15 @@ async function handleVoiceAddress(req, res) {
     const doc = byRole.get(role);
     if (!doc) return null;
     const request = buildVoiceRequest(doc, voiceText);
+    const { _id, ...fields } = doc;
     const entry = {
       role,
       character: String(doc.Character || "").trim(),
       name: String(firstString(doc.Model) || doc.Character || "").trim(),
+      provider: String(doc.TtsProvider || "").trim(),
       method: request.method,
       voiceUrl: request.voiceUrl,
+      fields,
     };
     if (request.body) entry.body = request.body;
     return entry;

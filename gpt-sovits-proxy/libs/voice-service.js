@@ -35,9 +35,23 @@ function authHeaders() {
   return {};
 }
 
+function providerKind(doc) {
+  const provider = String(doc.TtsProvider ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  if (provider.includes("kokoro")) return "kokoro";
+  if (provider.includes("gpt") || provider.includes("sovits") || provider.includes("svoits")) {
+    return "gptsovits";
+  }
+  return "";
+}
+
 function isUrlService(doc) {
-  const base = String(doc.TtsBaseUrl ?? "").trim();
-  return doc.TtsProvider === "kokoro" || /^https?:\/\//i.test(base);
+  const kind = providerKind(doc);
+  if (kind) return kind === "kokoro";
+  const base = String(doc.TtsBaseUrl ?? doc.TtsServerUrl ?? "").trim();
+  return /^https?:\/\//i.test(base);
 }
 
 function hasValue(value) {
@@ -58,7 +72,9 @@ function buildSovitsBody(doc, text) {
   if (hasValue(doc.InferenceLanguage)) body.prompt_lang = String(doc.InferenceLanguage).trim();
   if (hasValue(doc.TextSplitMethod)) body.text_split_method = String(doc.TextSplitMethod).trim();
   if (hasValue(doc.VoiceSpeed)) body.speed_factor = numeric(doc.VoiceSpeed);
+  if (hasValue(doc.FragmentInterval)) body.fragment_interval = numeric(doc.FragmentInterval);
   if (hasValue(doc.Seed)) body.seed = numeric(doc.Seed);
+  if (hasValue(doc.TtsFormat)) body.media_type = String(doc.TtsFormat).trim();
   return body;
 }
 
