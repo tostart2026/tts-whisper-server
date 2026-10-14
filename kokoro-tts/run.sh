@@ -7,7 +7,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Conda environment that provides Python + torch (reused, not recreated).
-ENV_NAME="${KOKORO_ENV_NAME:-runtime}"
+ENV_NAME="${KOKORO_ENV_NAME:-tts-whisper}"
 CONDA_SH="${CONDA_SH:-$HOME/.miniconda3/etc/profile.d/conda.sh}"
 
 # Active voice / synthesis defaults (see api_server.py for all KOKORO_* vars).

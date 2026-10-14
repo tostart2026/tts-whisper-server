@@ -1,0 +1,17 @@
+{
+  "name": "gpt-sovits-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.21.0",
+    "redis": "^6.2.1"
+  }
+}

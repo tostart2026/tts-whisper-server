@@ -297,11 +297,15 @@
       <input type="text" id="gsToken" placeholder="声音令牌">
     </div>
 
+    <div>
+      <label for="gsText">合成文本 voiceText（master / assit 共用）</label>
+      <textarea id="gsText">你好，这是数字人声音合成测试。</textarea>
+    </div>
+
     <div class="row">
       <div>
-        <label for="gsMasterText">master 合成文本 voiceText</label>
-        <textarea id="gsMasterText">你好，这是 master 数字人声音合成测试。</textarea>
-        <div class="actions" style="margin-top:10px">
+        <label>master 声音</label>
+        <div class="actions">
           <button class="primary" id="gsMasterSpeak">master 声音合成</button>
           <button class="ghost" id="gsMasterPlay" disabled>播放</button>
           <button class="ghost" id="gsMasterDownload" disabled>下载音频</button>
@@ -310,15 +314,18 @@
       </div>
 
       <div>
-        <label for="gsAssitText">assit 合成文本 voiceText</label>
-        <textarea id="gsAssitText">你好，这是 assit 数字人声音合成测试。</textarea>
-        <div class="actions" style="margin-top:10px">
+        <label>assit 声音</label>
+        <div class="actions">
           <button class="primary" id="gsAssitSpeak">assit 声音合成</button>
           <button class="ghost" id="gsAssitPlay" disabled>播放</button>
           <button class="ghost" id="gsAssitDownload" disabled>下载音频</button>
         </div>
         <audio id="gsAssitPlayer" controls class="hidden"></audio>
       </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="gsFetchAddress">获取声音地址 (/v1/voice/address)</button>
     </div>
 
     <div class="status" id="gsStatus"></div>
@@ -697,8 +704,8 @@
 
   /* ================= 数字人声音合成 ================= */
   const GS_ROLES = {
-    master: { speak: 'gsMasterSpeak', play: 'gsMasterPlay', download: 'gsMasterDownload', player: 'gsMasterPlayer', text: 'gsMasterText' },
-    assit: { speak: 'gsAssitSpeak', play: 'gsAssitPlay', download: 'gsAssitDownload', player: 'gsAssitPlayer', text: 'gsAssitText' },
+    master: { speak: 'gsMasterSpeak', play: 'gsMasterPlay', download: 'gsMasterDownload', player: 'gsMasterPlayer', text: 'gsText' },
+    assit: { speak: 'gsAssitSpeak', play: 'gsAssitPlay', download: 'gsAssitDownload', player: 'gsAssitPlayer', text: 'gsText' },
   };
   const gsState = {
     master: { blob: null, url: null },
@@ -741,7 +748,7 @@
     const cfg = GS_ROLES[role];
     const voiceText = $(cfg.text).value.trim();
     if (!token) { gsStatus('请输入 token', 'error'); return; }
-    if (!voiceText) { gsStatus('请输入 ' + role + ' voiceText', 'error'); return; }
+    if (!voiceText) { gsStatus('请输入合成文本 voiceText', 'error'); return; }
 
     $(cfg.speak).disabled = true;
     gsStatus(role + ' 合成中...');
@@ -795,6 +802,43 @@
     a.click();
   }
 
+  async function gsFetchAddress() {
+    const token = $('gsToken').value.trim();
+    const voiceText = $('gsText').value.trim();
+    if (!token) { gsStatus('请输入 token', 'error'); return; }
+    if (!voiceText) { gsStatus('请输入合成文本 voiceText', 'error'); return; }
+
+    const btn = $('gsFetchAddress');
+    btn.disabled = true;
+    gsStatus('获取声音地址中...');
+    try {
+      const res = await fetch('/v1/voice/address', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token, voiceText: voiceText }),
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch (e) {}
+      if (!res.ok) {
+        const msg = data && (data.error || data.message) ? (data.error || data.message) : text;
+        throw new Error('HTTP ' + res.status + ' ' + msg);
+      }
+      if (data === null) throw new Error('HTTP ' + res.status + ' 响应不是 JSON');
+      gsShowMeta(
+        'POST /v1/voice/address',
+        JSON.stringify({ token: token, voiceText: voiceText }, null, 2),
+        JSON.stringify(data, null, 2));
+      gsStatus('声音地址获取成功（master / assist）', 'ok');
+    } catch (e) {
+      gsShowMeta('POST /v1/voice/address', JSON.stringify({ token: token, voiceText: voiceText }, null, 2), e.message);
+      gsStatus('声音地址获取失败: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  $('gsFetchAddress').addEventListener('click', gsFetchAddress);
   $('gsMasterSpeak').addEventListener('click', () => gsSynthesize('master'));
   $('gsAssitSpeak').addEventListener('click', () => gsSynthesize('assit'));
   $('gsMasterPlay').addEventListener('click', () => gsPlay('master'));
