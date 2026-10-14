@@ -1,15 +1,15 @@
 import http from "node:http";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getUserVoiceDocs } from "./lib/asset-store.js";
-import { verifyToken } from "./lib/auth.js";
+import { getUserVoiceDocs } from "./libs/asset-store.js";
+import { verifyToken } from "./libs/auth.js";
 import {
   AUTH_LOCK_SECONDS,
   clearAuthFailures,
   clientIp,
   getLockSeconds,
   registerAuthFailure,
-} from "./lib/auth-guard.js";
+} from "./libs/auth-guard.js";
 import {
   getAuthDbName,
   getDigitalmanDbName,
@@ -20,10 +20,10 @@ import {
   getVoiceHost,
   getVoicePortFallback,
   getVoiceScheme,
-} from "./lib/config.js";
-import { closeDb, connectDb, isDbConnected } from "./lib/db.js";
-import { closeRedis, connectRedis, isRedisReady } from "./lib/redis.js";
-import { VoiceError, buildVoiceRequest, callVoice } from "./lib/voice-service.js";
+} from "./libs/config.js";
+import { closeDb, connectDb, isDbConnected } from "./libs/db.js";
+import { closeRedis, connectRedis, isRedisReady } from "./libs/redis.js";
+import { VoiceError, buildVoiceRequest, callVoice } from "./libs/voice-service.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 try {
