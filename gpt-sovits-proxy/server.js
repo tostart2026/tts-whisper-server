@@ -1,8 +1,6 @@
 import http from "node:http";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getUserVoiceDocs } from "./libs/asset-store.js";
-import { verifyToken } from "./libs/auth.js";
 import {
   AUTH_LOCK_SECONDS,
   clearAuthFailures,
@@ -11,18 +9,16 @@ import {
   registerAuthFailure,
 } from "./libs/auth-guard.js";
 import {
-  getAuthDbName,
-  getDigitalmanDbName,
-  getMongoUri,
   getProxyHost,
   getProxyPort,
   getRedisUrl,
+  getUserServiceUrl,
   getVoiceHost,
   getVoicePortFallback,
   getVoiceScheme,
 } from "./libs/config.js";
-import { closeDb, connectDb, isDbConnected } from "./libs/db.js";
 import { closeRedis, connectRedis, isRedisReady } from "./libs/redis.js";
+import { checkUserService, getUserVoiceDocs, verifyToken } from "./libs/user-client.js";
 import { VoiceError, buildVoiceRequest, callVoice } from "./libs/voice-service.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -143,6 +139,17 @@ function sendTooMany(res, retryAfter) {
   );
 }
 
+async function handleHealth(res) {
+  const userServiceReady = await checkUserService();
+  sendJson(res, 200, {
+    status: "ok",
+    service: "gpt-sovits-proxy",
+    user_service: userServiceReady ? "ok" : "down",
+    user_service_url: getUserServiceUrl(),
+    redis: isRedisReady(),
+  });
+}
+
 async function resolveUser(req, res, token) {
   const ip = clientIp(req);
   const lockedSeconds = await getLockSeconds(ip);
@@ -189,7 +196,7 @@ async function handleGptsovit(req, res) {
     user = await resolveUser(req, res, token);
   } catch (error) {
     log("warn", `gptsovit auth error=${error?.message ?? error}`);
-    sendMessage(res, 502, `数据查询失败：${error?.message ?? error}`);
+    sendMessage(res, error?.status ?? 502, error?.message ?? String(error));
     return;
   }
   if (user === null) return;
@@ -203,7 +210,7 @@ async function handleGptsovit(req, res) {
     docs = await getUserVoiceDocs(token, user.appCode);
   } catch (error) {
     log("warn", `gptsovit voice lookup error=${error?.message ?? error}`);
-    sendMessage(res, 502, `数据查询失败：${error?.message ?? error}`);
+    sendMessage(res, error?.status ?? 502, error?.message ?? String(error));
     return;
   }
 
@@ -285,7 +292,7 @@ async function handleVoiceAddress(req, res) {
   try {
     user = await verifyToken(token);
   } catch (error) {
-    sendApiError(res, `数据库查询失败：${error?.message ?? error}`, 502);
+    sendApiError(res, error?.message ?? String(error), error?.status ?? 502);
     return;
   }
   if (!user) {
@@ -303,7 +310,7 @@ async function handleVoiceAddress(req, res) {
   try {
     docs = await getUserVoiceDocs(token, user.appCode);
   } catch (error) {
-    sendApiError(res, `数据库查询失败：${error?.message ?? error}`, 502);
+    sendApiError(res, error?.message ?? String(error), error?.status ?? 502);
     return;
   }
 
@@ -355,13 +362,10 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === "GET" && pathname === "/health") {
-    sendJson(res, 200, {
-      status: "ok",
-      service: "gpt-sovits-proxy",
-      mongo: isDbConnected(),
-      mongodb_db: getAuthDbName(),
-      digitalman_db: getDigitalmanDbName(),
-      redis: isRedisReady(),
+    handleHealth(res).catch((error) => {
+      log("warn", `health error=${error?.message ?? error}`);
+      if (!res.headersSent) sendJson(res, 500, { status: "error" });
+      else res.end();
     });
     return;
   }
@@ -396,19 +400,14 @@ async function bootstrap() {
 
   console.log("Starting Digital Man voice proxy (Node.js)");
   console.log(`  Listen:     ${host}:${port}`);
-  console.log(`  MongoDB:    ${getMongoUri()}`);
-  console.log(`  DB:         ${getAuthDbName()} / ${getDigitalmanDbName()}`);
+  console.log(`  User:       ${getUserServiceUrl()}`);
   console.log(`  Redis:      ${getRedisUrl()}`);
   console.log(
     `  Voice:      ${getVoiceScheme()}://${getVoiceHost()}:{TtsBaseUrl|${getVoicePortFallback()}}`,
   );
 
-  try {
-    await connectDb();
-    console.log("MongoDB 已连接");
-  } catch (error) {
-    console.warn(`MongoDB 连接失败（将在请求时重试）：${error?.message ?? error}`);
-  }
+  const userServiceReady = await checkUserService();
+  console.log(userServiceReady ? "用户服务就绪" : "用户服务暂不可用（将在请求时重试）");
 
   const redisOk = await connectRedis();
   console.log(redisOk ? "Redis 就绪（token 限流启用）" : "Redis 不可用，token 限流 fail-open");
@@ -423,7 +422,6 @@ async function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   await closeRedis();
-  await closeDb();
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 3000).unref();
 }

@@ -14,26 +14,23 @@ export function getProxyHost() {
 }
 
 export function getProxyPort() {
-  return envNum("DIGITALMAN_PROXY_PORT", 8083);
+  return envNum("DIGITALMAN_PROXY_PORT", 8883);
 }
 
 export function getRequestTimeoutMs() {
   return envNum("DIGITALMAN_TIMEOUT", 600) * 1000;
 }
 
-export function getMongoUri() {
-  return (
-    envStr("MONGODB_URI") ||
-    "mongodb://192.168.168.33:27017,192.168.168.33:27018,192.168.168.33:27019/?replicaSet=rs0"
-  );
+export function getUserServiceUrl() {
+  return envStr("USER_SERVICE_URL") || "http://127.0.0.1:8080";
 }
 
-export function getAuthDbName() {
-  return envStr("MONGODB_DB") || "voice_helper_db";
+export function getUserServiceToken() {
+  return envStr("USER_SERVICE_TOKEN");
 }
 
-export function getDigitalmanDbName() {
-  return envStr("DIGITALMAN_DB") || "digitalman_db";
+export function getUserServiceTimeoutMs() {
+  return envNum("USER_SERVICE_TIMEOUT", 10) * 1000;
 }
 
 export function getRedisUrl() {

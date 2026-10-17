@@ -13,7 +13,7 @@ CONDA_SH="${CONDA_SH:-$HOME/.miniconda3/etc/profile.d/conda.sh}"
 # Active voice / synthesis defaults (see api_server.py for all KOKORO_* vars).
 export KOKORO_VOICE="${KOKORO_VOICE:-af_heart}"
 export KOKORO_SPEED="${KOKORO_SPEED:-1.0}"
-export KOKORO_PORT="${KOKORO_PORT:-8082}"
+export KOKORO_PORT="${KOKORO_PORT:-8882}"
 export KOKORO_LOG_LEVEL="${KOKORO_LOG_LEVEL:-INFO}"
 export KOKORO_API_KEY="${KOKORO_API_KEY:-}"
 
@@ -37,4 +37,11 @@ source "$CONDA_SH"
 conda activate "$ENV_NAME"
 
 cd "$HERE"
+
+# Stop any previous instance, then start a fresh one.
+# Takes no arguments: just run it to (re)deploy.
+pkill -f "$HERE/api_server.py" 2>/dev/null || true
+sleep 1
+
 nohup python "$HERE/api_server.py" &
+echo "Started kokoro-tts (pid=$!)"

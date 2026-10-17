@@ -1,28 +1,23 @@
 import { MongoClient } from "mongodb";
-import { getAuthDbName, getDigitalmanDbName, getMongoUri } from "./config.js";
+import { getMongoUri, getUserDbName, getVoiceDbName } from "./config.js";
 
 export const USERS_COLLECTION = "User_Info";
-export const DIGITAL_HUMAN_COLLECTION = "AI_Digital_Human_Info";
 export const CHARACTER_VOICE_COLLECTION = "AI_Character_Voice_Info";
 
 let client = null;
-let db = null;
 let connecting = null;
 
 export async function connectDb() {
-  if (db) return db;
+  if (client) return client;
   if (!connecting) {
-    const current = client ?? new MongoClient(getMongoUri(), { serverSelectionTimeoutMS: 10000 });
-    client = current;
+    const current = new MongoClient(getMongoUri(), { serverSelectionTimeoutMS: 10000 });
     connecting = current
       .connect()
       .then(() => {
-        db = current.db(getAuthDbName());
-        return db;
+        client = current;
+        return client;
       })
       .catch(async (error) => {
-        if (client === current) client = null;
-        db = null;
         await current.close().catch(() => undefined);
         throw error;
       })
@@ -34,18 +29,22 @@ export async function connectDb() {
 }
 
 export function isDbConnected() {
-  return db !== null;
+  return client !== null;
 }
 
-export function getDigitalmanDb() {
-  if (!client || !db) throw new Error("MongoDB 尚未连接");
-  return client.db(getDigitalmanDbName());
+export function getUserDb() {
+  if (!client) throw new Error("MongoDB 尚未连接");
+  return client.db(getUserDbName());
+}
+
+export function getVoiceDb() {
+  if (!client) throw new Error("MongoDB 尚未连接");
+  return client.db(getVoiceDbName());
 }
 
 export async function closeDb() {
   if (client) {
     await client.close().catch(() => undefined);
     client = null;
-    db = null;
   }
 }
