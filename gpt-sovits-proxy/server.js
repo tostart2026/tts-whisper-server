@@ -9,16 +9,16 @@ import {
   registerAuthFailure,
 } from "./libs/auth-guard.js";
 import {
+  getCommonServiceUrl,
   getProxyHost,
   getProxyPort,
   getRedisUrl,
-  getUserServiceUrl,
   getVoiceHost,
   getVoicePortFallback,
   getVoiceScheme,
 } from "./libs/config.js";
 import { closeRedis, connectRedis, isRedisReady } from "./libs/redis.js";
-import { checkUserService, getUserVoiceDocs, verifyToken } from "./libs/user-client.js";
+import { checkCommonService, getUserVoiceDocs, verifyToken } from "./libs/common-client.js";
 import { VoiceError, buildVoiceRequest, callVoice } from "./libs/voice-service.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -140,12 +140,12 @@ function sendTooMany(res, retryAfter) {
 }
 
 async function handleHealth(res) {
-  const userServiceReady = await checkUserService();
+  const commonServiceReady = await checkCommonService();
   sendJson(res, 200, {
     status: "ok",
     service: "gpt-sovits-proxy",
-    user_service: userServiceReady ? "ok" : "down",
-    user_service_url: getUserServiceUrl(),
+    common_service: commonServiceReady ? "ok" : "down",
+    common_service_url: getCommonServiceUrl(),
     redis: isRedisReady(),
   });
 }
@@ -400,14 +400,14 @@ async function bootstrap() {
 
   console.log("Starting Digital Man voice proxy (Node.js)");
   console.log(`  Listen:     ${host}:${port}`);
-  console.log(`  User:       ${getUserServiceUrl()}`);
+  console.log(`  Common:     ${getCommonServiceUrl()}`);
   console.log(`  Redis:      ${getRedisUrl()}`);
   console.log(
     `  Voice:      ${getVoiceScheme()}://${getVoiceHost()}:{TtsBaseUrl|${getVoicePortFallback()}}`,
   );
 
-  const userServiceReady = await checkUserService();
-  console.log(userServiceReady ? "用户服务就绪" : "用户服务暂不可用（将在请求时重试）");
+  const commonServiceReady = await checkCommonService();
+  console.log(commonServiceReady ? "公共服务就绪" : "公共服务暂不可用（将在请求时重试）");
 
   const redisOk = await connectRedis();
   console.log(redisOk ? "Redis 就绪（token 限流启用）" : "Redis 不可用，token 限流 fail-open");

@@ -15,10 +15,9 @@ set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-export USER_SERVICE_URL="${USER_SERVICE_URL:-http://127.0.0.1:8080}"
-export USER_SERVICE_TOKEN="${USER_SERVICE_TOKEN:-}"
-export USER_SERVICE_TIMEOUT="${USER_SERVICE_TIMEOUT:-10}"
-export REDIS_URL="${REDIS_URL:-redis://192.168.168.33:6379}"
+export COMMON_SERVICE_URL="${COMMON_SERVICE_URL:-https://ai.ylb.cloud/common}"
+export COMMON_SERVICE_TIMEOUT="${COMMON_SERVICE_TIMEOUT:-10}"
+export REDIS_URL="${REDIS_URL:-redis://192.168.168.80:26379}"
 export VOICE_SCHEME="${VOICE_SCHEME:-http}"
 export VOICE_HOST="${VOICE_HOST:-192.168.168.33}"
 export VOICE_PORT="${VOICE_PORT:-33002}"
@@ -46,7 +45,7 @@ log() {
 run_worker() {
     log "Starting Digital Man voice proxy (Node.js)"
     log "  Listen:   ${DIGITALMAN_PROXY_HOST}:${DIGITALMAN_PROXY_PORT}"
-    log "  User:     $USER_SERVICE_URL"
+    log "  Common:   $COMMON_SERVICE_URL"
     log "  Redis:    $REDIS_URL"
     log "  Voice:    ${VOICE_SCHEME}://${VOICE_HOST}:{TtsBaseUrl|${VOICE_PORT}}"
     exec "$NODE_BIN" "$HERE/server.js"
