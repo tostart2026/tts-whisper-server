@@ -17,7 +17,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 export COMMON_SERVICE_URL="${COMMON_SERVICE_URL:-https://ai.ylb.cloud/common}"
 export COMMON_SERVICE_TIMEOUT="${COMMON_SERVICE_TIMEOUT:-10}"
-export REDIS_URL="${REDIS_URL:-redis://192.168.168.80:26379}"
+export REDIS_URL="${REDIS_URL:-redis://192.168.168.33:6379}"
 export VOICE_SCHEME="${VOICE_SCHEME:-http}"
 export VOICE_HOST="${VOICE_HOST:-192.168.168.33}"
 export VOICE_PORT="${VOICE_PORT:-33002}"

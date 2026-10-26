@@ -6,7 +6,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ENV_NAME="${KOKORO_ENV_NAME:-runtime}"
+ENV_NAME="${KOKORO_ENV_NAME:-tts-whisper}"
 CONDA_SH="${CONDA_SH:-$HOME/.miniconda3/etc/profile.d/conda.sh}"
 
 # shellcheck disable=SC1090
@@ -16,6 +16,12 @@ conda activate "$ENV_NAME"
 pip install -r "$HERE/requirements.txt"
 
 # English spaCy model used by the Kokoro/misaki text pipeline.
-pip install "$HERE/wheels/en_core_web_sm-3.8.0-py3-none-any.whl"
+SPACY_WHEEL="$HERE/wheels/en_core_web_sm-3.8.0-py3-none-any.whl"
+SPACY_URL="https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+if [ -f "$SPACY_WHEEL" ]; then
+  pip install "$SPACY_WHEEL"
+else
+  pip install "$SPACY_URL"
+fi
 
 echo "Kokoro dependencies installed in conda env '$ENV_NAME'."
