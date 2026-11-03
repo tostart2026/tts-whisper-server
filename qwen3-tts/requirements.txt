@@ -1,0 +1,10 @@
+# Qwen3-TTS server — direct (no Docker) runtime dependencies
+#
+# torch / torchaudio are installed separately by install.sh because the correct
+# CUDA wheel depends on the GPU. qwen-tts pins transformers/accelerate, so use
+# a dedicated conda environment (the default is "qwen3-tts") instead of sharing
+# the Kokoro / faster-whisper environment.
+qwen-tts==0.1.1
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+python-multipart>=0.0.9

@@ -148,7 +148,7 @@
 <body>
 <div class="app">
   <h1>TTS + Whisper 本地语音服务</h1>
-  <div class="sub">Kokoro 语音合成 · faster-whisper 语音识别 · 由 nginx 统一代理</div>
+  <div class="sub">Kokoro 语音合成 · Microsoft Edge 在线语音合成 · Qwen3-TTS 本地推理 · faster-whisper 语音识别 · 由 nginx 统一代理</div>
 
   <div class="topbar">
     <span class="pill" id="pillHealth"><span class="dot"></span>服务健康 TTS / ASR</span>
@@ -157,6 +157,8 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="tts">语音合成 TTS</button>
+    <button class="tab" data-tab="edge">Edge 语音合成</button>
+    <button class="tab" data-tab="qwen">Qwen3-TTS</button>
     <button class="tab" data-tab="asr">语音识别 Whisper</button>
     <button class="tab" data-tab="gptsovits">数字人声音合成</button>
   </div>
@@ -230,6 +232,161 @@
         <button class="ghost" id="ttsStreamSave">下载流式原始输出</button>
       </div>
     </details>
+  </div>
+
+  <!-- ================= Edge TTS ================= -->
+  <div class="panel hidden" id="edgePanel">
+    <div class="row-3">
+      <div>
+        <label for="edgeVoice">音色（Edge 音色名 / 别名）</label>
+        <select id="edgeVoice"></select>
+      </div>
+      <div>
+        <label for="edgeFormat">音频格式</label>
+        <select id="edgeFormat">
+          <option value="mp3">mp3</option>
+          <option value="wav">wav</option>
+          <option value="flac">flac</option>
+          <option value="opus">opus</option>
+          <option value="aac">aac</option>
+          <option value="pcm">pcm</option>
+        </select>
+      </div>
+      <div>
+        <label for="edgeStream">输出方式</label>
+        <select id="edgeStream">
+          <option value="">普通（一次性返回）</option>
+          <option value="audio">流式音频 audio</option>
+          <option value="sse">流式 SSE</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row-3">
+      <div>
+        <div class="slider-head">
+          <label for="edgeSpeed">语速</label>
+          <span class="slider-val" id="edgeSpeedVal">1.0x</span>
+        </div>
+        <input type="range" id="edgeSpeed" min="0.25" max="4" step="0.05" value="1.0">
+      </div>
+      <div>
+        <div class="slider-head">
+          <label for="edgeVolume">音量倍数</label>
+          <span class="slider-val" id="edgeVolumeVal">1.0</span>
+        </div>
+        <input type="range" id="edgeVolume" min="0.1" max="2" step="0.1" value="1.0">
+      </div>
+      <div>
+        <div class="slider-head">
+          <label for="edgePitch">音调 (Hz)</label>
+          <span class="slider-val" id="edgePitchVal">0</span>
+        </div>
+        <input type="range" id="edgePitch" min="-200" max="200" step="5" value="0">
+      </div>
+    </div>
+
+    <div>
+      <label for="edgeText">合成文本</label>
+      <textarea id="edgeText">你好，这是 Microsoft Edge 在线语音合成测试。</textarea>
+      <div class="hint" style="margin-top:6px">
+        示例：中文 zh-CN-XiaoxiaoNeural / 英文 en-US-AriaNeural / 别名 alloy · 需要联网（Edge 在线音色）
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="edgeSpeak">合成并播放</button>
+      <button class="ghost" id="edgeDownload" disabled>下载音频</button>
+      <button class="ghost" id="edgeReload">刷新音色</button>
+      <button class="ghost" id="edgeModels">列出模型</button>
+    </div>
+
+    <div class="status" id="edgeStatus"></div>
+    <audio id="edgePlayer" controls class="hidden"></audio>
+
+    <details id="edgeStreamBox" class="hidden">
+      <summary>流式接收日志</summary>
+      <pre class="out" id="edgeStreamOut"></pre>
+      <div class="actions" style="margin-top:8px">
+        <button class="ghost" id="edgeStreamSave">下载流式原始输出</button>
+      </div>
+    </details>
+  </div>
+
+  <!-- ================= Qwen3-TTS ================= -->
+  <div class="panel hidden" id="qwenPanel">
+    <div class="hint" id="qwTaskHint">正在读取模型信息...</div>
+
+    <div class="row-3">
+      <div id="qwSpeakerBox">
+        <label for="qwVoice">音色 / Speaker</label>
+        <select id="qwVoice"></select>
+      </div>
+      <div>
+        <label for="qwLang">语言</label>
+        <select id="qwLang"></select>
+      </div>
+      <div>
+        <label for="qwFormat">音频格式</label>
+        <select id="qwFormat">
+          <option value="mp3">mp3</option>
+          <option value="wav">wav</option>
+          <option value="flac">flac</option>
+          <option value="opus">opus</option>
+          <option value="aac">aac</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="slider-head">
+          <label for="qwSpeed">语速（后处理）</label>
+          <span class="slider-val" id="qwSpeedVal">1.0x</span>
+        </div>
+        <input type="range" id="qwSpeed" min="0.25" max="4" step="0.05" value="1.0">
+      </div>
+      <div>
+        <div class="slider-head">
+          <label for="qwVolume">音量倍数</label>
+          <span class="slider-val" id="qwVolumeVal">1.0</span>
+        </div>
+        <input type="range" id="qwVolume" min="0.1" max="2" step="0.1" value="1.0">
+      </div>
+    </div>
+
+    <div id="qwInstructBox">
+      <label for="qwInstruct">声音指令 instruct（VoiceDesign 必填 / 1.7B CustomVoice 可选）</label>
+      <textarea id="qwInstruct" placeholder="例如：用开心、兴奋的语气说" style="min-height:64px"></textarea>
+    </div>
+
+    <div id="qwCloneBox" class="hidden">
+      <label>参考音频（VoiceClone 模型）</label>
+      <input type="file" id="qwRefFile" accept="audio/*">
+      <div class="status" id="qwRefInfo"></div>
+      <div style="margin-top:10px">
+        <label for="qwRefText">参考音频文本 ref_text</label>
+        <textarea id="qwRefText" placeholder="参考音频中说的内容（x_vector_only 模式可留空）" style="min-height:64px"></textarea>
+      </div>
+      <label style="margin-top:10px;display:inline-flex;gap:8px;align-items:center;color:var(--text)">
+        <input type="checkbox" id="qwXVectorOnly" style="width:auto"> 仅使用说话人向量（x_vector_only_mode）
+      </label>
+    </div>
+
+    <div>
+      <label for="qwText">合成文本</label>
+      <textarea id="qwText">你好，这是本地部署的 Qwen3-TTS 语音合成测试。</textarea>
+    </div>
+
+    <div class="actions">
+      <button class="primary" id="qwSpeak">合成并播放</button>
+      <button class="ghost" id="qwDownload" disabled>下载音频</button>
+      <button class="ghost" id="qwReload">刷新音色</button>
+      <button class="ghost" id="qwModels">列出模型</button>
+    </div>
+
+    <div class="status" id="qwStatus"></div>
+    <audio id="qwPlayer" controls class="hidden"></audio>
   </div>
 
   <!-- ================= ASR ================= -->
@@ -356,6 +513,20 @@
       <pre class="out" id="ttsModelsOut"></pre>
     </details>
   </div>
+
+  <div class="panel hidden" id="edgeModelsPanel" style="margin-top:16px">
+    <details id="edgeModelsBox">
+      <summary>模型列表 (GET /edge/models)</summary>
+      <pre class="out" id="edgeModelsOut"></pre>
+    </details>
+  </div>
+
+  <div class="panel hidden" id="qwenModelsPanel" style="margin-top:16px">
+    <details id="qwenModelsBox">
+      <summary>模型列表 (GET /qwen/models)</summary>
+      <pre class="out" id="qwenModelsOut"></pre>
+    </details>
+  </div>
 </div>
 
 <script>
@@ -396,7 +567,7 @@
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       const target = tab.dataset.tab;
-      [['tts', 'ttsPanel'], ['asr', 'asrPanel'], ['gptsovits', 'gptsovitsPanel']].forEach(([key, id]) => {
+      [['tts', 'ttsPanel'], ['edge', 'edgePanel'], ['qwen', 'qwenPanel'], ['asr', 'asrPanel'], ['gptsovits', 'gptsovitsPanel']].forEach(([key, id]) => {
         $(id).classList.toggle('hidden', key !== target);
       });
     });
@@ -616,6 +787,434 @@
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'stream_output.txt';
+    a.click();
+  });
+
+  /* ================= Edge TTS ================= */
+  let lastEdgeUrl = null;
+  let lastEdgeBlob = null;
+  let lastEdgeStreamText = '';
+
+  function edgeStatus(msg, type) {
+    const el = $('edgeStatus');
+    el.textContent = msg || '';
+    el.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  async function loadEdgeVoices() {
+    edgeStatus('正在加载音色...');
+    try {
+      const res = await fetch('/edge/voices');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      let voices = Array.isArray(data) ? data : (data.data || data.voices || []);
+      if (!voices.length) throw new Error('音色列表为空');
+      const sel = $('edgeVoice');
+      sel.innerHTML = '';
+      voices.forEach(v => {
+        const name = typeof v === 'string' ? v : (v.id || v.ShortName || v.name || String(v));
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = (typeof v === 'object' && v.description) ? (name + ' — ' + v.description) : name;
+        sel.appendChild(opt);
+      });
+      const list = voices.map(x => typeof x === 'string' ? x : (x.id || x.ShortName || x.name));
+      const match = ['zh-CN-XiaoxiaoNeural', 'zh-CN-YunxiNeural', 'en-US-AriaNeural'].find(p => list.includes(p));
+      if (match) sel.value = match;
+      edgeStatus('已加载 ' + voices.length + ' 个音色', 'ok');
+    } catch (e) {
+      edgeStatus('加载音色失败: ' + e.message, 'error');
+    }
+  }
+
+  async function listEdgeModels() {
+    $('edgeModelsPanel').classList.remove('hidden');
+    $('edgeModelsBox').open = true;
+    $('edgeModelsOut').textContent = '加载中...';
+    try {
+      const res = await fetch('/edge/models');
+      const data = await res.json();
+      $('edgeModelsOut').textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      $('edgeModelsOut').textContent = '获取失败: ' + e.message;
+    }
+  }
+
+  function edgePayload(extra) {
+    return Object.assign({
+      model: 'edge-tts',
+      input: $('edgeText').value.trim(),
+      voice: $('edgeVoice').value,
+      response_format: $('edgeFormat').value,
+      speed: parseFloat($('edgeSpeed').value),
+      volume_multiplier: parseFloat($('edgeVolume').value),
+      pitch: parseFloat($('edgePitch').value),
+    }, extra || {});
+  }
+
+  function edgePlayBlob(blob) {
+    lastEdgeBlob = blob;
+    if (lastEdgeUrl) URL.revokeObjectURL(lastEdgeUrl);
+    lastEdgeUrl = URL.createObjectURL(blob);
+    $('edgePlayer').src = lastEdgeUrl;
+    $('edgePlayer').classList.remove('hidden');
+    $('edgeDownload').disabled = false;
+    $('edgePlayer').play().catch(() => {});
+  }
+
+  function edgeAppendStreamLog(line) {
+    $('edgeStreamBox').classList.remove('hidden');
+    lastEdgeStreamText += line + '\n';
+    const out = $('edgeStreamOut');
+    out.textContent += line + '\n';
+    out.scrollTop = out.scrollHeight;
+  }
+
+  const EDGE_MIME = {
+    mp3: 'audio/mpeg', wav: 'audio/wav', flac: 'audio/flac',
+    opus: 'audio/opus', aac: 'audio/aac', pcm: 'audio/L16',
+  };
+
+  async function edgeSynthesize() {
+    const text = $('edgeText').value.trim();
+    if (!text) { edgeStatus('请输入要合成的文本', 'error'); return; }
+    if (!$('edgeVoice').value) { edgeStatus('请选择音色', 'error'); return; }
+
+    const stream = $('edgeStream').value;
+    $('edgeSpeak').disabled = true;
+
+    try {
+      if (stream === 'sse') {
+        await edgeSynthesizeSse();
+        return;
+      }
+
+      edgeStatus(stream === 'audio' ? '流式合成中...' : '合成中...');
+      const res = await fetch('/edge/audio/speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(edgePayload(stream ? { stream_format: stream } : {})),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error('HTTP ' + res.status + ' ' + detail);
+      }
+
+      let blob;
+      if (stream === 'audio' && res.body) {
+        lastEdgeStreamText = '';
+        $('edgeStreamOut').textContent = '';
+        const reader = res.body.getReader();
+        const chunks = [];
+        let received = 0;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          received += value.length;
+          edgeStatus('流式接收中... ' + (received / 1024).toFixed(1) + ' KB');
+        }
+        const fmt = $('edgeFormat').value;
+        blob = new Blob(chunks, { type: EDGE_MIME[fmt] || 'audio/mpeg' });
+        edgeAppendStreamLog('stream_format=audio，共接收 ' + (received / 1024).toFixed(1) + ' KB');
+      } else {
+        blob = await res.blob();
+      }
+
+      edgePlayBlob(blob);
+      edgeStatus('合成成功 (' + (blob.size / 1024).toFixed(1) + ' KB)', 'ok');
+    } catch (e) {
+      edgeStatus('合成失败: ' + e.message, 'error');
+    } finally {
+      $('edgeSpeak').disabled = false;
+    }
+  }
+
+  async function edgeSynthesizeSse() {
+    edgeStatus('SSE 流式合成中...');
+    lastEdgeStreamText = '';
+    $('edgeStreamOut').textContent = '';
+    $('edgeStreamBox').classList.remove('hidden');
+    const res = await fetch('/edge/audio/speech', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(edgePayload({ stream_format: 'sse' })),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      throw new Error('HTTP ' + res.status + ' ' + detail);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '', events = 0, bytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bytes += value.length;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+      parts.forEach(evt => {
+        if (!evt.trim()) return;
+        events++;
+        const dataLines = evt.split('\n').filter(l => l.startsWith('data:')).map(l => l.slice(5).trim());
+        edgeAppendStreamLog('event #' + events + '  ' + (dataLines.join(' ').slice(0, 120) || evt.slice(0, 120)));
+      });
+      edgeStatus('SSE 接收中... 事件 ' + events + '，' + (bytes / 1024).toFixed(1) + ' KB');
+    }
+    if (buffer.trim()) edgeAppendStreamLog(buffer.trim().slice(0, 300));
+    edgeStatus('SSE 完成，共 ' + events + ' 个事件 (' + (bytes / 1024).toFixed(1) + ' KB)', 'ok');
+  }
+
+  $('edgeSpeed').addEventListener('input', () => {
+    $('edgeSpeedVal').textContent = parseFloat($('edgeSpeed').value).toFixed(2) + 'x';
+  });
+  $('edgeVolume').addEventListener('input', () => {
+    $('edgeVolumeVal').textContent = parseFloat($('edgeVolume').value).toFixed(1);
+  });
+  $('edgePitch').addEventListener('input', () => {
+    $('edgePitchVal').textContent = $('edgePitch').value;
+  });
+  $('edgeSpeak').addEventListener('click', edgeSynthesize);
+  $('edgeReload').addEventListener('click', loadEdgeVoices);
+  $('edgeModels').addEventListener('click', listEdgeModels);
+  $('edgeDownload').addEventListener('click', () => {
+    if (!lastEdgeBlob) return;
+    const a = document.createElement('a');
+    a.href = lastEdgeUrl;
+    a.download = 'edge-speech.' + $('edgeFormat').value;
+    a.click();
+  });
+  $('edgeStreamSave').addEventListener('click', () => {
+    const blob = new Blob([lastEdgeStreamText], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'edge_stream_output.txt';
+    a.click();
+  });
+
+  /* ================= Qwen3-TTS ================= */
+  const qwState = {
+    task: 'custom_voice',
+    instructSupported: true,
+    blob: null,
+    url: null,
+  };
+
+  function qwStatus(msg, type) {
+    const el = $('qwStatus');
+    el.textContent = msg || '';
+    el.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  const QWEN_FALLBACK_LANGS = [
+    ['zh', 'Chinese'], ['en', 'English'], ['ja', 'Japanese'], ['ko', 'Korean'],
+    ['de', 'German'], ['fr', 'French'], ['ru', 'Russian'], ['pt', 'Portuguese'],
+    ['es', 'Spanish'], ['it', 'Italian'],
+  ];
+
+  function qwApplyTask(task, instructSupported) {
+    qwState.task = task || 'custom_voice';
+    qwState.instructSupported = instructSupported !== false;
+
+    const isCustom = qwState.task === 'custom_voice';
+    const isDesign = qwState.task === 'voice_design';
+    const isClone = qwState.task === 'voice_clone';
+
+    $('qwSpeakerBox').classList.toggle('hidden', !isCustom);
+    $('qwCloneBox').classList.toggle('hidden', !isClone);
+    $('qwInstructBox').classList.toggle('hidden', !isCustom && !isDesign);
+
+    const hint = $('qwTaskHint');
+    if (isCustom) {
+      hint.textContent = 'CustomVoice · 预置音色' +
+        (qwState.instructSupported ? ' · 支持 instruct 指令控制' : ' · 0.6B 模型不支持 instruct');
+    } else if (isDesign) {
+      hint.textContent = 'VoiceDesign · 通过 instruct 描述设计音色（必填）';
+    } else {
+      hint.textContent = 'Base · 声音克隆 · 需上传参考音频并填写 ref_text（或勾选 x_vector_only）';
+    }
+
+    const instruct = $('qwInstruct');
+    instruct.disabled = isCustom && !qwState.instructSupported;
+    if (instruct.disabled) {
+      instruct.placeholder = '当前 0.6B CustomVoice 模型不支持 instruct';
+    } else if (isDesign) {
+      instruct.placeholder = '描述目标音色，例如：撒娇稚嫩的萝莉女声，音调偏高';
+    } else {
+      instruct.placeholder = '例如：用开心、兴奋的语气说';
+    }
+  }
+
+  function qwFillLanguages(languages) {
+    const sel = $('qwLang');
+    sel.innerHTML = '';
+    const auto = document.createElement('option');
+    auto.value = 'Auto';
+    auto.textContent = 'Auto — 自动检测';
+    sel.appendChild(auto);
+
+    const list = (Array.isArray(languages) && languages.length)
+      ? languages.map(l => [l.code || '', l.name || String(l)])
+      : QWEN_FALLBACK_LANGS;
+    list.forEach(([code, name]) => {
+      if (!name) return;
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = code ? (code + ' — ' + name) : name;
+      sel.appendChild(opt);
+    });
+    sel.value = 'Auto';
+  }
+
+  async function loadQwenVoices() {
+    qwStatus('正在读取模型信息...');
+    try {
+      const res = await fetch('/qwen/voices');
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error('HTTP ' + res.status + ' ' + detail);
+      }
+      const data = await res.json();
+      qwApplyTask(data.task, data.instruct_supported);
+
+      const voices = Array.isArray(data) ? data : (data.data || data.voices || []);
+      const sel = $('qwVoice');
+      sel.innerHTML = '';
+      voices.forEach(v => {
+        const name = typeof v === 'string' ? v : (v.id || v.name || String(v));
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = (typeof v === 'object' && v.description)
+          ? (name + ' — ' + v.description)
+          : name;
+        sel.appendChild(opt);
+      });
+      const def = data.default_voice;
+      if (def) sel.value = def;
+
+      qwFillLanguages(data.languages);
+      qwStatus('模型: ' + (data.model || 'qwen3-tts') + ' · 任务: ' + qwState.task, 'ok');
+    } catch (e) {
+      qwStatus('读取失败: ' + e.message, 'error');
+    }
+  }
+
+  async function listQwenModels() {
+    $('qwenModelsPanel').classList.remove('hidden');
+    $('qwenModelsBox').open = true;
+    $('qwenModelsOut').textContent = '加载中...';
+    try {
+      const res = await fetch('/qwen/models');
+      const data = await res.json();
+      $('qwenModelsOut').textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      $('qwenModelsOut').textContent = '获取失败: ' + e.message;
+    }
+  }
+
+  function qwSetBlob(blob) {
+    qwState.blob = blob;
+    if (qwState.url) URL.revokeObjectURL(qwState.url);
+    qwState.url = URL.createObjectURL(blob);
+    $('qwPlayer').src = qwState.url;
+    $('qwPlayer').classList.remove('hidden');
+    $('qwDownload').disabled = false;
+    $('qwPlayer').play().catch(() => {});
+  }
+
+  function qwPayload() {
+    return {
+      model: 'qwen3-tts',
+      input: $('qwText').value.trim(),
+      voice: $('qwVoice').value || undefined,
+      speaker: $('qwVoice').value || undefined,
+      language: $('qwLang').value,
+      instruct: $('qwInstruct').value.trim() || undefined,
+      response_format: $('qwFormat').value,
+      speed: parseFloat($('qwSpeed').value),
+      volume_multiplier: parseFloat($('qwVolume').value),
+    };
+  }
+
+  async function qwenSynthesize() {
+    const text = $('qwText').value.trim();
+    if (!text) { qwStatus('请输入要合成的文本', 'error'); return; }
+
+    const task = qwState.task;
+    if (task === 'voice_design' && !$('qwInstruct').value.trim()) {
+      qwStatus('VoiceDesign 模型需要填写 instruct', 'error');
+      return;
+    }
+
+    let refFile = null;
+    if (task === 'voice_clone') {
+      refFile = $('qwRefFile').files[0];
+      if (!refFile) { qwStatus('请选择参考音频文件', 'error'); return; }
+      const xVectorOnly = $('qwXVectorOnly').checked;
+      if (!xVectorOnly && !$('qwRefText').value.trim()) {
+        qwStatus('请填写 ref_text，或勾选 x_vector_only_mode', 'error');
+        return;
+      }
+    }
+
+    $('qwSpeak').disabled = true;
+    qwStatus('合成中...');
+    try {
+      let res;
+      if (task === 'voice_clone') {
+        const fd = new FormData();
+        fd.append('file', refFile);
+        fd.append('input', text);
+        fd.append('language', $('qwLang').value);
+        fd.append('ref_text', $('qwRefText').value.trim());
+        fd.append('x_vector_only_mode', $('qwXVectorOnly').checked ? 'true' : 'false');
+        fd.append('response_format', $('qwFormat').value);
+        fd.append('speed', $('qwSpeed').value);
+        fd.append('volume_multiplier', $('qwVolume').value);
+        res = await fetch('/qwen/audio/clone', { method: 'POST', body: fd });
+      } else {
+        res = await fetch('/qwen/audio/speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(qwPayload()),
+        });
+      }
+
+      if (!res.ok) {
+        const detail = await res.text().catch(() => '');
+        throw new Error('HTTP ' + res.status + ' ' + detail);
+      }
+      const blob = await res.blob();
+      qwSetBlob(blob);
+      qwStatus('合成成功 (' + (blob.size / 1024).toFixed(1) + ' KB)', 'ok');
+    } catch (e) {
+      qwStatus('合成失败: ' + e.message, 'error');
+    } finally {
+      $('qwSpeak').disabled = false;
+    }
+  }
+
+  $('qwSpeed').addEventListener('input', () => {
+    $('qwSpeedVal').textContent = parseFloat($('qwSpeed').value).toFixed(2) + 'x';
+  });
+  $('qwVolume').addEventListener('input', () => {
+    $('qwVolumeVal').textContent = parseFloat($('qwVolume').value).toFixed(1);
+  });
+  $('qwRefFile').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) { $('qwRefInfo').textContent = ''; return; }
+    $('qwRefInfo').textContent = '已选择: ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+    $('qwRefInfo').className = 'status ok';
+  });
+  $('qwSpeak').addEventListener('click', qwenSynthesize);
+  $('qwReload').addEventListener('click', loadQwenVoices);
+  $('qwModels').addEventListener('click', listQwenModels);
+  $('qwDownload').addEventListener('click', () => {
+    if (!qwState.blob) return;
+    const a = document.createElement('a');
+    a.href = qwState.url;
+    a.download = 'qwen3-speech.' + $('qwFormat').value;
     a.click();
   });
 
@@ -847,6 +1446,8 @@
   $('gsAssitDownload').addEventListener('click', () => gsDownload('assit'));
 
   loadVoices();
+  loadEdgeVoices();
+  loadQwenVoices();
   refreshHealth();
 })();
 </script>

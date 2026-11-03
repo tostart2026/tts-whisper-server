@@ -14,4 +14,5 @@ pymongo
 uvicorn
 fastapi
 httpx
+av<14
 faster-whisper-server==0.0.1

@@ -13,6 +13,7 @@ dependencies = [
     "fastapi>=0.110.0",
     "uvicorn[standard]>=0.29.0",
     "faster-whisper>=1.2.1",
+    "av<14",
     "pyyaml>=6.0.1",
     "python-multipart>=0.0.9",
 ]

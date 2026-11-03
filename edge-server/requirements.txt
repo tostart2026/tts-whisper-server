@@ -1,0 +1,8 @@
+# Microsoft Edge TTS server — direct (no Docker) runtime dependencies
+#
+# Edge TTS streams audio from Microsoft's online neural voices, so there are
+# no GPU/torch dependencies. ffmpeg is needed for non-mp3 output formats
+# (wav/opus/aac/flac/pcm) and is expected to be available on PATH.
+edge-tts==7.3.1
+fastapi==0.141.1
+uvicorn[standard]==0.52.4

@@ -1,0 +1,1 @@
+{"detail":"Speech synthesis failed: ffmpeg is required for mp3/aac/opus output but was not found."}

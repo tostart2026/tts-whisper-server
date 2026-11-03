@@ -1,2 +1,0 @@
-Usage: ./run.sh {start|kill}
-Started faster-whisper-server (serve.py)
