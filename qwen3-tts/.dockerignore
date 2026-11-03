@@ -1,0 +1,8 @@
+nohup.out
+models/
+__pycache__/
+*.pyc
+test.sh
+run.sh
+install.sh
+download_models.sh

@@ -112,6 +112,7 @@
   button.primary:disabled, button.ghost:disabled { opacity: .5; cursor: not-allowed; }
   button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
   button.ghost:hover:not(:disabled) { background: #232936; }
+  .preset-btn { padding: 6px 11px; font-size: 12px; }
   .status { font-size: 13px; color: var(--muted); min-height: 18px; }
   .status.error { color: var(--err); }
   .status.ok { color: var(--ok); }
@@ -357,7 +358,17 @@
 
     <div id="qwInstructBox">
       <label for="qwInstruct">声音指令 instruct（VoiceDesign 必填 / 1.7B CustomVoice 可选）</label>
-      <textarea id="qwInstruct" placeholder="例如：用开心、兴奋的语气说" style="min-height:64px"></textarea>
+      <textarea id="qwInstruct" placeholder="例如：用开心、兴奋的语气说" style="min-height:64px">用自然、亲切、清晰的语气朗读，语速适中。</textarea>
+      <div class="actions" id="qwInstructPresets" style="margin-top:8px">
+        <button class="ghost preset-btn" type="button" data-instruct="用温柔、亲切的语气朗读，语速稍慢，声音柔和。">温柔亲切</button>
+        <button class="ghost preset-btn" type="button" data-instruct="用开心、兴奋的语气说，语调上扬，情绪饱满。">开心兴奋</button>
+        <button class="ghost preset-btn" type="button" data-instruct="用悲伤、低沉、克制的语气缓慢诉说。">悲伤低沉</button>
+        <button class="ghost preset-btn" type="button" data-instruct="用严肃、专业、沉稳的语气播报，吐字清晰。">严肃专业</button>
+        <button class="ghost preset-btn" type="button" data-instruct="体现撒娇稚嫩的萝莉女声，音调偏高且起伏明显，营造出黏人、做作又刻意卖萌的听觉效果。">撒娇可爱</button>
+        <button class="ghost preset-btn" type="button" data-instruct="用愤怒、激动的语气大声说，语速偏快，重音明显。">愤怒激动</button>
+        <button class="ghost preset-btn" type="button" data-instruct="用标准的新闻播报语气，字正腔圆，节奏平稳专业。">新闻播报</button>
+        <button class="ghost preset-btn" type="button" data-instruct="用睡前故事的轻柔语气，语速缓慢，温暖而有耐心。">睡前故事</button>
+      </div>
     </div>
 
     <div id="qwCloneBox" class="hidden">
@@ -570,6 +581,7 @@
       [['tts', 'ttsPanel'], ['edge', 'edgePanel'], ['qwen', 'qwenPanel'], ['asr', 'asrPanel'], ['gptsovits', 'gptsovitsPanel']].forEach(([key, id]) => {
         $(id).classList.toggle('hidden', key !== target);
       });
+      if (target === 'qwen' && !qwState.loaded) loadQwenVoices();
     });
   });
 
@@ -997,6 +1009,7 @@
   const qwState = {
     task: 'custom_voice',
     instructSupported: true,
+    loaded: false,
     blob: null,
     url: null,
   };
@@ -1094,8 +1107,10 @@
       if (def) sel.value = def;
 
       qwFillLanguages(data.languages);
+      qwState.loaded = true;
       qwStatus('模型: ' + (data.model || 'qwen3-tts') + ' · 任务: ' + qwState.task, 'ok');
     } catch (e) {
+      qwState.loaded = false;
       qwStatus('读取失败: ' + e.message, 'error');
     }
   }
@@ -1200,6 +1215,13 @@
   });
   $('qwVolume').addEventListener('input', () => {
     $('qwVolumeVal').textContent = parseFloat($('qwVolume').value).toFixed(1);
+  });
+  $('qwInstructPresets').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-instruct]');
+    if (!btn) return;
+    const ta = $('qwInstruct');
+    ta.value = btn.dataset.instruct;
+    if (!ta.disabled) ta.focus();
   });
   $('qwRefFile').addEventListener('change', e => {
     const file = e.target.files[0];

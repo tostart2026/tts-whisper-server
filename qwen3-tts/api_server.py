@@ -210,6 +210,24 @@ def _resolve_dtype():
     return torch.float32
 
 
+def _resolve_model_source(name: str) -> str:
+    """Return a local snapshot path when the checkpoint is already cached.
+
+    Passing a repo id to transformers triggers an online model_info() lookup in
+    some versions even when the files are cached. Resolving the Hugging Face
+    cache to a local directory keeps startup fully offline.
+    """
+    expanded = Path(name).expanduser()
+    if expanded.exists():
+        return str(expanded)
+    try:
+        from huggingface_hub import snapshot_download
+
+        return snapshot_download(name, local_files_only=True)
+    except Exception:  # noqa: BLE001 - fall back to the original repo id
+        return name
+
+
 def _load_model() -> None:
     global _model, _model_error, _sample_rate, _supported_speakers
     global _supported_languages, _model_dtype
@@ -234,7 +252,9 @@ def _load_model() -> None:
             if ATTN_IMPL:
                 kwargs["attn_implementation"] = ATTN_IMPL
 
-            model = Qwen3TTSModel.from_pretrained(MODEL_NAME, **kwargs)
+            model_source = _resolve_model_source(MODEL_NAME)
+            logger.info("Resolved model source: %s", model_source)
+            model = Qwen3TTSModel.from_pretrained(model_source, **kwargs)
             _model = model
             _model_dtype = str(dtype)
             _model_error = None

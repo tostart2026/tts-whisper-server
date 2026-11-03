@@ -6,8 +6,8 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Dedicated conda environment created by install.sh.
-ENV_NAME="${QWEN3_TTS_ENV_NAME:-qwen3-tts}"
+# Conda environment shared with the other servers (default: tts-whisper).
+ENV_NAME="${QWEN3_TTS_ENV_NAME:-tts-whisper}"
 if [[ -z "${CONDA_SH:-}" ]]; then
   for cand in \
     "$HOME/.miniconda3/etc/profile.d/conda.sh" \

@@ -1,15 +1,127 @@
+# 宿主机使用 systemd-resolved 的 127.0.0.53 stub，Docker 内置 DNS 转发到它时
+# 部分镜像（尤其 Alpine/musl 的 Node）解析外部域名会失败（EAI_AGAIN），
+# 导致容器无法访问外网。这里统一指定公共 DNS，绕开宿主机 stub。
+x-default-dns: &default-dns
+  - 223.5.5.5
+  - 114.114.114.114
+
 services:
-  # ---------- Web: nginx 静态页面 + 反向代理 ----------
-  # kokoro(TTS) 与 faster-whisper(ASR) 均已直接运行在宿主机上，
-  # 因此 nginx 通过 host.docker.internal 反代到宿主机端口。
+  # ---------- ASR: faster-whisper (GPU) ----------
+  faster-whisper:
+    build:
+      context: ./fast-whisper-server
+    image: tts-whisper/faster-whisper:local
+    container_name: tts-whisper-asr
+    restart: always
+    dns: *default-dns
+    devices:
+      - nvidia.com/gpu=all
+    shm_size: "1gb"
+    volumes:
+      - ./fast-whisper-server/models:/app/models:ro
+    networks:
+      - tts-net
+
+  # ---------- TTS: Kokoro (GPU) ----------
+  kokoro-tts:
+    build:
+      context: ./kokoro-tts
+    image: tts-whisper/kokoro:local
+    container_name: tts-whisper-kokoro
+    restart: always
+    dns: *default-dns
+    devices:
+      - nvidia.com/gpu=all
+    shm_size: "1gb"
+    volumes:
+      - ./kokoro-tts/models:/app/models
+    networks:
+      - tts-net
+
+  # ---------- TTS: Microsoft Edge (CPU, outbound network) ----------
+  edge-tts:
+    build:
+      context: ./edge-server
+    image: tts-whisper/edge:local
+    container_name: tts-whisper-edge
+    restart: always
+    dns: *default-dns
+    volumes:
+      - ./edge-server/models:/app/models
+    networks:
+      - tts-net
+
+  # ---------- TTS: Qwen3 (GPU) ----------
+  qwen3-tts:
+    build:
+      context: ./qwen3-tts
+    image: tts-whisper/qwen3:local
+    container_name: tts-whisper-qwen3
+    restart: always
+    dns: *default-dns
+    devices:
+      - nvidia.com/gpu=all
+    shm_size: "1gb"
+    volumes:
+      - ./qwen3-tts/models:/app/models
+    networks:
+      - tts-net
+
+  # ---------- KeyDB (Redis 兼容缓存) ----------
+  keydb:
+    image: docker.1ms.run/eqalpha/keydb:alpine
+    container_name: tts-whisper-keydb
+    restart: always
+    dns: *default-dns
+    command: keydb-server /etc/keydb/keydb.conf --appendonly yes
+    volumes:
+      - ./data/redis:/data
+    networks:
+      - tts-net
+
+  # ---------- 数字人声音代理 (Node.js) ----------
+  gpt-sovits-proxy:
+    build:
+      context: ./gpt-sovits-proxy
+    image: tts-whisper/gpt-sovits-proxy:local
+    container_name: tts-whisper-sovits
+    restart: always
+    dns: *default-dns
+    environment:
+      COMMON_SERVICE_URL: ${COMMON_SERVICE_URL:-https://ai.ylb.cloud/common}
+      COMMON_SERVICE_TIMEOUT: ${COMMON_SERVICE_TIMEOUT:-10}
+      REDIS_URL: ${REDIS_URL:-redis://keydb:6379}
+      VOICE_SCHEME: ${VOICE_SCHEME:-http}
+      VOICE_HOST: ${VOICE_HOST:-192.168.168.32}
+      VOICE_PORT: ${VOICE_PORT:-33002}
+      VOICE_TTS_PATH: ${VOICE_TTS_PATH:-/tts}
+      TRUST_PROXY: ${TRUST_PROXY:-true}
+      DIGITALMAN_PROXY_HOST: 0.0.0.0
+      DIGITALMAN_PROXY_PORT: 8883
+      DIGITALMAN_TIMEOUT: ${DIGITALMAN_TIMEOUT:-600}
+    networks:
+      - tts-net
+
+  # ---------- Web: nginx 静态页面 + 反向代理（仅暴露 8880） ----------
   web:
     image: docker.1panel.live/library/nginx:stable-alpine
     container_name: tts-whisper-web
     restart: always
+    dns: *default-dns
     ports:
       - "8880:80"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     volumes:
       - ./html:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - faster-whisper
+      - kokoro-tts
+      - edge-tts
+      - qwen3-tts
+      - gpt-sovits-proxy
+    networks:
+      - tts-net
+
+networks:
+  tts-net:
+    name: tts-whisper-net
