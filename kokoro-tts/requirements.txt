@@ -3,6 +3,8 @@
 # torch is intentionally NOT pinned here: the target conda env already ships a
 # CUDA-enabled torch build. Only install it explicitly if your env lacks it:
 #   pip install torch --index-url https://download.pytorch.org/whl/cpu   # CPU only
+# transformers 5.x requires torch >= 2.6, which has no Pascal (SM 6.x) kernels.
+transformers==4.57.3
 kokoro==0.9.4
 misaki[ja]==0.9.4
 misaki[zh]==0.9.4

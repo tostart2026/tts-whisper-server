@@ -1,7 +1,7 @@
-ARG BASE_IMAGE=tts-whisper/torch-base:local
+ARG BASE_IMAGE=base:cu121
 FROM ${BASE_IMAGE}
 
-ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ARG PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple/
 
 WORKDIR /app
 

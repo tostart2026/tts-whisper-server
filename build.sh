@@ -10,5 +10,6 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$HERE"
 
-docker build -t tts-whisper/torch-base:local ./base
+docker build -t tts-whisper/torch-base:local -f ./base/Dockerfile ./base
+docker build -t base:cu121 -f ./base/Dockerfile.cu121 ./base
 docker compose build "$@"

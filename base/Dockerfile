@@ -4,7 +4,7 @@
 ARG BASE_IMAGE=docker.1panel.live/library/python:3.12-slim
 FROM ${BASE_IMAGE}
 
-ARG PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ARG PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple/
 ARG TORCH_VERSION=2.14.1
 ARG TORCHAUDIO_VERSION=2.11.1
 
