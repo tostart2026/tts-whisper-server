@@ -92,7 +92,7 @@ services:
       COMMON_SERVICE_TIMEOUT: ${COMMON_SERVICE_TIMEOUT:-10}
       REDIS_URL: ${REDIS_URL:-redis://keydb:6379}
       VOICE_SCHEME: ${VOICE_SCHEME:-http}
-      VOICE_HOST: ${VOICE_HOST:-192.168.168.32}
+      VOICE_HOST: ${VOICE_HOST:-192.168.168.60}
       VOICE_PORT: ${VOICE_PORT:-33002}
       VOICE_TTS_PATH: ${VOICE_TTS_PATH:-/tts}
       TRUST_PROXY: ${TRUST_PROXY:-true}
@@ -119,8 +119,50 @@ services:
       - edge-tts
       - qwen3-tts
       - gpt-sovits-proxy
+      - funasr
     networks:
       - tts-net
+
+
+  # FunASR 本地语音识别服务
+  funasr:
+    image: registry.cn-hangzhou.aliyuncs.com/funasr_repo/funasr:funasr-runtime-sdk-cpu-0.4.7
+    container_name: funasr-server
+    restart: unless-stopped
+    dns: *default-dns
+    volumes: 
+      - ./data/funasr-runtime-resources/models:/workspace/models
+    networks:
+      - tts-net
+    entrypoint:
+      - /workspace/FunASR/runtime/websocket/build/bin/funasr-wss-server
+    command:
+      - --download-model-dir
+      - /workspace/models
+      - --vad-dir
+      - damo/speech_fsmn_vad_zh-cn-16k-common-onnx
+      - --model-dir
+      - damo/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-onnx
+      - --punc-dir
+      - damo/punc_ct-transformer_cn-en-common-vocab471067-large-onnx
+      - --itn-dir
+      - thuduj12/fst_itn_zh
+      - --lm-dir
+      - damo/speech_ngram_lm_zh-cn-ai-wesp-fst
+      - --hotword
+      - /workspace/models/hotwords.txt
+      - --decoder-thread-num
+      - "12"
+      - --model-thread-num
+      - "1"
+      - --io-thread-num
+      - "1"
+      - --port
+      - "10095"
+      - --certfile
+      - ""
+      - --keyfile
+      - ""
 
 networks:
   tts-net:
